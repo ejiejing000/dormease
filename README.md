@@ -67,7 +67,7 @@ erDiagram
 
 | Member | GitHub username | Tables | Endpoints / screen | Join report(s) and join type | Feature role |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | @your-github-username | `roles`, `users` | `/api/users` (GET, POST, PUT, DELETE), `POST /api/users/login`, `GET /api/users/me` - screen `js/users.js` + login in `js/common.js` | `/api/users/reports/roles-inner-join` - INNER JOIN | Core: users, roles, login (401/403), database setup |
+| 1 | @ejiejing000 | `roles`, `users` | `/api/users` (GET, POST, PUT, DELETE), `POST /api/users/login`, `GET /api/users/me` - screen `js/users.js` + login in `js/common.js` | `/api/users/reports/roles-inner-join` - INNER JOIN | Core: users, roles, login (401/403), database setup |
 | 2 | @your-github-username | `properties`, `room_categories`, `rooms`, `amenities`, `room_amenities` | `/api/rooms` (GET, POST, PUT, DELETE) - screen `js/rooms.js` | `/api/rooms/reports/amenities-left-join` - LEFT JOIN | Master data: room catalog |
 | 3 | @your-github-username | `tenants`, `leases` | `/api/leases` (GET, POST, PUT, DELETE) - screen `js/leases.js` | `/api/leases/reports/tenancy-inner-join` - INNER JOIN | Transactions: contracts |
 | 4 | @your-github-username | `utility_meters`, `utility_rates`, `meter_readings` | `/api/readings` (GET, POST, PUT, DELETE), `simulate-tier-calculation` - screen `js/utilities.js` | `/api/readings/reports/consumption-inner-join` - INNER JOIN | Unique feature, part 1: tiered rate engine |
