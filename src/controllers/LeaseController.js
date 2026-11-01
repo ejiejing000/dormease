@@ -78,6 +78,14 @@ class LeaseController {
                 });
             }
 
+	    // Lease end date must not be earlier than the start date
+            if (new Date(lease_end_date) < new Date(lease_start_date)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lease end date cannot be earlier than the lease start date.'
+                });
+            }
+
             // Security deposit must be at least 2 months of rent
             if (security_deposit !== undefined && security_deposit !== null && security_deposit !== '') {
                 const minimumDeposit = Number(monthly_rent_amount) * 2;
