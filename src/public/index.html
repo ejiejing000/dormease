@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DormEase - Student Boarding House Rooms & Utility Billing</title>
+  <!-- Google Fonts: Bricolage Grotesque, Figtree, DM Mono, FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Topbar with Enamel Brand Plate & Horizontal Pill Nav -->
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="javascript:void(0)" onclick="switchTab('tab-dashboard')">
+      <span class="brand-plate">DE</span>
+      <span>DormEase</span>
+    </a>
+
+    <nav class="nav" aria-label="Main Navigation">
+      <button class="nav-item active" data-tab="tab-dashboard">
+        <i class="fa-solid fa-house"></i>
+        <span>Overview</span>
+      </button>
+      <button class="nav-item" data-tab="tab-rooms">
+        <i class="fa-solid fa-door-open"></i>
+        <span>Rooms & Catalog</span>
+        <span class="nav-badge">Member B</span>
+      </button>
+      <button class="nav-item" data-tab="tab-users">
+        <i class="fa-solid fa-users"></i>
+        <span>Users & Access</span>
+        <span class="nav-badge">Member A</span>
+      </button>
+      <button class="nav-item" data-tab="tab-leases">
+        <i class="fa-solid fa-file-signature"></i>
+        <span>Tenants & Leases</span>
+        <span class="nav-badge">Member C</span>
+      </button>
+      <button class="nav-item" data-tab="tab-utilities">
+        <i class="fa-solid fa-bolt"></i>
+        <span>Readings & Rates</span>
+        <span class="nav-badge">Member D</span>
+      </button>
+      <button class="nav-item" data-tab="tab-invoices">
+        <i class="fa-solid fa-receipt"></i>
+        <span>Billing & Receipts</span>
+        <span class="nav-badge">Member E</span>
+      </button>
+      <button class="nav-item" data-tab="tab-joins" style="border: 1px dashed var(--line);">
+        <i class="fa-solid fa-database"></i>
+        <span>SQL Joins</span>
+        <span class="nav-badge">Member F</span>
+      </button>
+    </nav>
+
+    <div class="who who-clickable" id="topbarWhoBtn" onclick="openEditLandlordModal()" title="Click to view or change Landlord profile">
+      <div class="beacon">
+        <span class="beacon-dot"></span>
+        <span>SQLite 16 Tables</span>
+      </div>
+      <span class="avatar" id="topbarAvatar">R</span>
+      <span class="who-name">
+        <strong id="topbarLandlordName" style="display:block;">Engr. Roberto Dela Cruz</strong>
+        <small id="topbarRole">Landlord / Owner <i class="fa-solid fa-pen" style="font-size:10px; margin-left:3px; opacity:0.7;"></i></small>
+      </span>
+      <button class="btn small secondary" onclick="event.stopPropagation(); logout()" title="Log out"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+    </div>
+  </div>
+</header>
+
+<!-- Login Screen (Member 1) -->
+<div id="loginScreen" class="login-screen hidden">
+  <form class="login-card" onsubmit="handleLogin(event)">
+    <span class="brand-plate">DE</span>
+    <h1>DormEase</h1>
+    <p class="muted">Log in to continue</p>
+    <label>Email
+      <input type="email" id="loginEmail" value="roberto.landlord@dormease.ph" required autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" id="loginPassword" required autocomplete="current-password">
+    </label>
+    <p id="loginError" class="login-error hidden"></p>
+    <button type="submit" id="loginBtn" class="btn block">Log in</button>
+    <p class="muted" style="font-size:.8rem;margin-top:1rem;">Demo accounts (password <strong>dormease123</strong>):<br>
+      roberto.landlord@dormease.ph (landlord)<br>maria.caretaker@dormease.ph (staff)<br>kenji.takahashi@univ.edu.ph (tenant)</p>
+  </form>
+</div>
+
+<!-- Global Feedback Notification Banner -->
+<div id="feedbackBanner" class="feedback-banner hidden">
+  <i id="feedbackIcon" class="fa-solid fa-circle-info"></i>
+  <span id="feedbackText">Notification message</span>
+  <button class="close-banner" onclick="hideBanner()">&times;</button>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p>Executing SQLite Query...</p>
+</div>
+
+<main id="main">
+
+  <!-- =========================================================================
+       TAB 1: OVERVIEW & LANDING HERO (Member F)
+       ========================================================================= -->
+  <section id="tab-dashboard" class="tab-pane active">
+    <!-- Hero Band with House SVG Illustration & Door Badge -->
+    <div class="hero-band">
+      <div class="hero">
+        <div>
+          <h1>Find your next room and know what you'll pay.</h1>
+          <p class="lead">Browse boarding house rooms, reserve online, and get an itemized bill every month.</p>
+          <div class="searchbar">
+            <i class="fa-solid fa-magnifying-glass" style="color:var(--ink-2); margin-right:4px;"></i>
+            <input type="text" id="quickSearchInput" placeholder="Area, room number or house name..." oninput="handleGlobalSearch(event)">
+            <select id="quickBudgetSelect" onchange="filterRoomsByBudget(event)">
+              <option value="">Any budget</option>
+              <option value="3000">Up to PHP 3,000</option>
+              <option value="4000">Up to PHP 4,000</option>
+              <option value="6000">Up to PHP 6,000</option>
+            </select>
+            <button class="btn" onclick="switchTab('tab-rooms')">Browse</button>
+          </div>
+          <div class="chips" style="margin-top:1.2rem;">
+            <a class="chip" href="javascript:void(0)" onclick="switchTab('tab-rooms'); filterByAmenity('Wi-Fi')"><i class="fa-solid fa-wifi"></i> Wi-Fi</a>
+            <a class="chip" href="javascript:void(0)" onclick="switchTab('tab-rooms'); filterByAmenity('Aircon')"><i class="fa-solid fa-snowflake"></i> Aircon</a>
+            <a class="chip" href="javascript:void(0)" onclick="switchTab('tab-rooms'); filterByAmenity('Shower')"><i class="fa-solid fa-shower"></i> Hot Shower</a>
+            <a class="chip" href="javascript:void(0)" onclick="switchTab('tab-rooms'); filterRoomsByBudget({target:{value:'4000'}})">Under PHP 4,000</a>
+          </div>
+        </div>
+        <div class="hero-art">
+          <img src="img/hero-house.svg" alt="Illustration of DormEase student boarding house with rooms for rent">
+          <div class="hero-badge">
+            <strong id="heroAvailableCount">6</strong>
+            <span>rooms open<br>right now</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Landlord Profile & Management Spotlight -->
+    <div class="landlord-spotlight" style="margin-top:2rem;">
+      <div style="display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap;">
+        <span class="avatar" id="dashLandlordAvatar" style="width:3.8rem; height:3.8rem; font-size:1.5rem; background:var(--ultra-600); border:2px solid var(--ultra-400);">R</span>
+        <div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <h2 id="dashLandlordName" style="margin:0; font-size:1.5rem; color:#fff;">Engr. Roberto Dela Cruz</h2>
+            <span class="tag" style="background:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.3); font-size:11px;">Primary Landlord</span>
+          </div>
+          <p id="dashPropertyName" style="margin:4px 0 0; color:var(--ultra-100); font-size:.92rem;">Owner: Green Ville Student Residence & Sunrise Academic Dormitory</p>
+          <div class="landlord-meta">
+            <span class="landlord-meta-item"><i class="fa-solid fa-phone"></i> <span id="dashLandlordPhone">09171234567</span></span>
+            <span class="landlord-meta-item"><i class="fa-solid fa-envelope"></i> <span id="dashLandlordEmail">roberto.landlord@dormease.ph</span></span>
+            <span class="landlord-meta-item"><i class="fa-solid fa-building-user"></i> Active Boarding House</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <button class="btn" style="background:#fff; color:var(--ultra-900); border-color:#fff; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,0.15);" onclick="openEditLandlordModal()">
+          <i class="fa-solid fa-pen-to-square"></i> Change Landlord Name & Info
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Action / Todo KPI Tiles -->
+    <div class="todo" style="margin-top:1.5rem;">
+      <div class="todo-card" onclick="switchTab('tab-rooms')">
+        <strong id="statTotalRooms">6</strong>
+        <span>Total Rooms<small id="statOccupancyRate">0% Occupancy</small></span>
+      </div>
+      <div class="todo-card" onclick="switchTab('tab-leases')">
+        <strong id="statActiveLeases" style="color:#059669;">2</strong>
+        <span>Active Leases<small id="statOccupiedRooms">2 Rooms Occupied</small></span>
+      </div>
+      <div class="todo-card" onclick="switchTab('tab-leases')">
+        <strong id="statPendingRes" style="color:var(--warn);">2</strong>
+        <span>Pending Bookings<small>Prospective students</small></span>
+      </div>
+      <div class="todo-card" onclick="switchTab('tab-invoices')">
+        <strong id="statTotalCollected" style="font-size:1.6rem; color:var(--ultra-700);">₱7,277.50</strong>
+        <span>Total Collected<small id="statOutstanding" style="color:var(--bad);">₱4,780.00 Outstanding</small></span>
+      </div>
+    </div>
+
+    <!-- How DormEase Works 3-Step Cards -->
+    <div style="margin: 3rem 0;">
+      <div class="section-head">
+        <h2>How DormEase works</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step">
+          <span class="bubble"><i class="fa-solid fa-key"></i></span>
+          <h3>Reserve a room</h3>
+          <p>Pick a room, choose your move-in date and send a request. The landlord confirms and assigns the room online.</p>
+        </div>
+        <div class="step">
+          <span class="bubble"><i class="fa-solid fa-bolt-lightning"></i></span>
+          <h3>Landlord logs sub-meters</h3>
+          <p>Each month your caretaker enters the water and electricity sub-meter readings for your specific room.</p>
+        </div>
+        <div class="step">
+          <span class="bubble"><i class="fa-solid fa-receipt"></i></span>
+          <h3>Itemized digital receipt arrives</h3>
+          <p>DormEase calculates tiered utility rates, binds your rent, and sends you a transparent itemized receipt.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Split Section with Mini Receipt -->
+    <div class="split" style="margin: 3rem 0; background:#fff; border:1px solid var(--line); border-radius:22px; padding:2.5rem;">
+      <div>
+        <h2 style="font-size:1.9rem">A bill you can actually read</h2>
+        <p class="muted">Every charge is on its own line: your room space rent, the water you used, the electricity you used, and the tiered rate. No disputes, and you can print or save it as a digital receipt.</p>
+        <div class="actions" style="margin-top:1.5rem;">
+          <button class="btn" onclick="switchTab('tab-utilities')"><i class="fa-solid fa-calculator"></i> Test Meter Tier Engine</button>
+          <button class="btn secondary" onclick="switchTab('tab-invoices')"><i class="fa-solid fa-file-invoice-dollar"></i> View All Invoices</button>
+        </div>
+      </div>
+      <div>
+        <div class="receipt-mini" aria-label="Example itemized receipt">
+          <h3>DormEase Receipt</h3>
+          <div><span>Room 101 rent</span><span>5,500.00</span></div>
+          <div><span>Water 8.5 m3 x 35.00</span><span>327.50</span></div>
+          <div><span>Electricity 105 kWh (Tiered)</span><span>1,450.00</span></div>
+          <hr>
+          <div class="tot"><span>Total due</span><span>PHP 7,277.50</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA Band -->
+    <div class="cta-band">
+      <div class="cta-in">
+        <div>
+          <h2>Integrated Boarding House & Utility Management</h2>
+          <p>Full 16-table relational schema with SQL joins for DBMS1 & SIA course defense.</p>
+        </div>
+        <button class="btn" style="background:#fff; color:var(--ultra-800); border-color:#fff;" onclick="switchTab('tab-joins')">
+          <i class="fa-solid fa-database"></i> View SQL Joins Showcase
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 2: ROOMS CATALOG & AMENITY MATRIX (Member B)
+       ========================================================================= -->
+  <section id="tab-rooms" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>Houses and Rooms</h1>
+        <p class="muted">Managed by <strong>Member B</strong> (Master Data Slice: <code>properties</code>, <code>room_categories</code>, <code>rooms</code>, <code>amenities</code>, <code>room_amenities</code>)</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="openMemberBJoinModal()"><i class="fa-solid fa-table-cells"></i> View Member B LEFT JOIN</button>
+        <button class="btn" onclick="openRoomModal()"><i class="fa-solid fa-plus"></i> Add New Room</button>
+      </div>
+    </div>
+
+    <!-- Room Cards Grid with Signature Enamel Plates & SVGs -->
+    <div class="room-grid" id="roomsCardGrid">
+      <!-- Dynamically populated by renderRoomCards() -->
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 3: USERS & ROLES (Member A)
+       ========================================================================= -->
+  <section id="tab-users" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>User Accounts & Access Control</h1>
+        <p class="muted">Managed by <strong>Member A</strong> (Core Slice: <code>users</code>, <code>roles</code>, login)</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="openMemberAJoiModal()"><i class="fa-solid fa-table-cells"></i> View Member A INNER JOIN</button>
+        <button class="btn" onclick="openUserModal()"><i class="fa-solid fa-user-plus"></i> Add New User</button>
+      </div>
+    </div>
+
+    <!-- Role Filter Chips -->
+    <div class="chips" style="margin-bottom:1.4rem;">
+      <button class="chip active" id="chipUserAll" onclick="filterUsersTable('ALL', this)"><i class="fa-solid fa-users"></i> All Users (<span id="userCountAll">6</span>)</button>
+      <button class="chip" id="chipUserLandlord" onclick="filterUsersTable('LANDLORD', this)"><i class="fa-solid fa-crown" style="color:var(--warn);"></i> Landlords (<span id="userCountLandlord">1</span>)</button>
+      <button class="chip" id="chipUserStaff" onclick="filterUsersTable('STAFF', this)"><i class="fa-solid fa-user-shield"></i> Caretakers / Staff (<span id="userCountStaff">1</span>)</button>
+      <button class="chip" id="chipUserTenant" onclick="filterUsersTable('STUDENT_TENANT', this)"><i class="fa-solid fa-graduation-cap"></i> Student Tenants (<span id="userCountTenant">4</span>)</button>
+    </div>
+
+    <div class="card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>User Profile</th>
+            <th>Contact Phone</th>
+            <th>Role Definition</th>
+            <th>Account Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <!-- Populated by loadUsers() -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 4: TENANTS & LEASES (Member C)
+       ========================================================================= -->
+  <section id="tab-leases" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>Student Tenants & Lease Agreements</h1>
+        <p class="muted">Managed by <strong>Member C</strong> (Transactions Slice: <code>tenants</code>, <code>reservations</code>, <code>leases</code>)</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="openMemberCJoinModal()"><i class="fa-solid fa-table-cells"></i> View Member C INNER JOIN</button>
+        <button class="btn" onclick="openLeaseModal()"><i class="fa-solid fa-file-contract"></i> Draft New Lease</button>
+      </div>
+    </div>
+
+    <!-- View Switcher: Tenants Cards vs Contracts Table -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div class="segmented-control">
+        <button class="segment-btn active" id="btnViewTenants" onclick="showLeaseSubView('tenants')">
+          <i class="fa-solid fa-id-card"></i> Student Tenants Directory (<span id="tenantsCountBadge">0</span>)
+        </button>
+        <button class="segment-btn" id="btnViewContracts" onclick="showLeaseSubView('contracts')">
+          <i class="fa-solid fa-file-contract"></i> Lease Agreements Ledger (<span id="contractsCountBadge">0</span>)
+        </button>
+      </div>
+      <div>
+        <span class="muted" style="font-size:12px;">Active Boarders & Lease Contracts</span>
+      </div>
+    </div>
+
+    <!-- Sub-view 1: Tenants Grid -->
+    <div id="tenantsGridView" class="tenant-grid">
+      <!-- Populated dynamically by loadTenants() -->
+    </div>
+
+    <!-- Sub-view 2: Contracts Table -->
+    <div id="contractsTableView" class="card" style="display:none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Contract #</th>
+            <th>Tenant Profile</th>
+            <th>Assigned Unit</th>
+            <th>Lease Period</th>
+            <th class="num">Monthly Rent</th>
+            <th class="num">Security Deposit</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="leasesTableBody">
+          <!-- Populated by loadLeases() -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 5: UTILITY METERS & TIER ENGINE (Member D)
+       ========================================================================= -->
+  <section id="tab-utilities" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>Sub-Meter Readings & Tiered Billing Engine</h1>
+        <p class="muted">Managed by <strong>Member D</strong> (Unique Feature 1: <code>utility_meters</code>, <code>utility_rates</code>, <code>meter_readings</code>)</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="openMemberDJoinModal()"><i class="fa-solid fa-table-cells"></i> View Member D INNER JOIN</button>
+        <button class="btn" onclick="openReadingModal()"><i class="fa-solid fa-gauge-high"></i> Log Meter Reading</button>
+      </div>
+    </div>
+
+    <!-- Live Tier Calculation Simulator -->
+    <div class="card" style="margin-bottom:2rem;">
+      <h3 style="margin-bottom:.4rem;"><i class="fa-solid fa-microchip" style="color:var(--tile);"></i> Live Tiered Tariff Calculation Simulator</h3>
+      <p class="muted" style="margin-bottom:1.2rem;">Demonstrates non-linear tariff computation crossing baseline limits into surge rates.</p>
+      <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:1rem; align-items:end;">
+        <div>
+          <label>Utility Commodity</label>
+          <select id="simUtilityType">
+            <option value="ELECTRICITY">⚡ Electricity (Base: 80 kWh @ ₱12.50, Surge @ ₱16.00)</option>
+            <option value="WATER">💧 Water (Base: 10 cu.m @ ₱35.00, Surge @ ₱50.00)</option>
+          </select>
+        </div>
+        <div>
+          <label>Units Consumed</label>
+          <input type="number" id="simConsumption" value="105" min="0" step="0.5">
+        </div>
+        <div>
+          <button class="btn" style="width:100%; height:44px;" onclick="simulateTierCharge()">
+            <i class="fa-solid fa-bolt"></i> Run Engine
+          </button>
+        </div>
+      </div>
+      <div id="simResultBox" class="hidden" style="margin-top:1.4rem;"></div>
+    </div>
+
+    <!-- Meter Readings Log -->
+    <div class="card">
+      <div class="section-head" style="margin-bottom:1rem;">
+        <h2>Recorded Meter Readings Log</h2>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Log ID</th>
+            <th>Room & Meter Serial</th>
+            <th>Commodity</th>
+            <th>Date Logged</th>
+            <th class="num">Previous</th>
+            <th class="num">Current</th>
+            <th class="num">Consumption</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="readingsTableBody">
+          <!-- Populated by loadReadings() -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 6: BILLING & ITEMIZED RECEIPTS (Member E)
+       ========================================================================= -->
+  <section id="tab-invoices" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>Itemized Digital Billing Receipts</h1>
+        <p class="muted">Managed by <strong>Member E</strong> (Unique Feature 2: <code>billing_invoices</code>, <code>payments</code>)</p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="openMemberEJoinModal()"><i class="fa-solid fa-table-cells"></i> View Member E LEFT JOIN</button>
+        <button class="btn" onclick="openGenerateInvoiceModal()"><i class="fa-solid fa-file-invoice"></i> Generate Monthly Invoice</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Tenant & Room Unit</th>
+            <th>Billing Period</th>
+            <th class="num">Room Rent</th>
+            <th class="num">Water Bill</th>
+            <th class="num">Electric Bill</th>
+            <th class="num">Total Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="invoicesTableBody">
+          <!-- Populated by loadInvoices() -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       TAB 7: SQL JOINS RUBRIC SHOWCASE (Member F & All)
+       ========================================================================= -->
+  <section id="tab-joins" class="tab-pane">
+    <div class="page-head">
+      <div>
+        <h1>SQL Join Reports Compliance Showcase</h1>
+        <p class="muted">Live execution of <strong>INNER JOIN</strong>, <strong>LEFT JOIN</strong>, and emulated <strong>FULL OUTER JOIN (UNION)</strong> for course defense.</p>
+      </div>
+    </div>
+
+    <div class="chips" style="margin-bottom:1.4rem;">
+      <button class="chip active" onclick="loadJoinDemo('inner-users')">1. INNER JOIN (Users & Roles - Member A)</button>
+      <button class="chip" onclick="loadJoinDemo('left-rooms')">2. LEFT JOIN (Rooms & Amenities - Member B)</button>
+      <button class="chip" onclick="loadJoinDemo('inner-leases')">3. INNER JOIN (Leases & Tenants - Member C)</button>
+      <button class="chip" onclick="loadJoinDemo('inner-readings')">4. INNER JOIN (Readings & Meters - Member D)</button>
+      <button class="chip" onclick="loadJoinDemo('left-invoices')">5. LEFT JOIN (Invoices & Payments - Member E)</button>
+      <button class="chip" style="background:var(--ultra-600); color:#fff; border-color:var(--ultra-600);" onclick="loadJoinDemo('full-outer')">6. FULL OUTER JOIN (Rooms & Leases - Member F)</button>
+    </div>
+
+    <!-- SQL Code Card -->
+    <div class="card" style="background:var(--ultra-900); color:var(--ultra-200); border:1px solid var(--ultra-800);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #142363; padding-bottom:.7rem; margin-bottom:.8rem;">
+        <span style="font-family:var(--mono); font-size:12px; font-weight:600; color:var(--ultra-400);" id="joinDemoBadge">SQL EXECUTION ENGINE</span>
+        <span class="tag" style="background:#142363; color:#fff;">Live Query</span>
+      </div>
+      <pre style="margin:0; color:#e2eafc;"><code id="joinSqlDisplay">-- SQL Query will appear here</code></pre>
+    </div>
+
+    <div class="card">
+      <div class="section-head" style="margin-bottom:1rem;">
+        <div>
+          <h2 id="joinDemoTitle">Select a Join Query</h2>
+          <p class="muted" id="joinDemoDesc" style="margin:0;">Click one of the buttons above to run the live SQL query.</p>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead id="joinTableHead"></thead>
+        <tbody id="joinTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer Matching Reference Layout -->
+<footer class="site-foot">
+  <div class="foot-in">
+    <div>
+      <a class="brand" href="javascript:void(0)" style="padding:0">
+        <span class="brand-plate">DE</span>
+        <span>DormEase</span>
+      </a>
+      <p style="margin-top:.7rem">Find a student boarding house room, reserve it online, and get a clear itemized bill every month.</p>
+    </div>
+    <div>
+      <h3>Student Boarders</h3>
+      <a href="javascript:void(0)" onclick="switchTab('tab-rooms')">Browse available rooms</a>
+      <a href="javascript:void(0)" onclick="switchTab('tab-leases')">My lease agreements</a>
+      <a href="javascript:void(0)" onclick="switchTab('tab-invoices')">My itemized bills</a>
+    </div>
+    <div>
+      <h3>Dorm Landlords</h3>
+      <a href="javascript:void(0)" onclick="switchTab('tab-rooms'); openRoomModal();">Post new rooms</a>
+      <a href="javascript:void(0)" onclick="switchTab('tab-utilities'); openReadingModal();">Log sub-meter readings</a>
+      <a href="javascript:void(0)" onclick="switchTab('tab-invoices'); openGenerateInvoiceModal();">Generate digital invoices</a>
+    </div>
+    <div>
+      <h3>Course Rubric Compliance</h3>
+      <p>DBMS 1 & SIA Merged Track: 6 Members, 16 Normalized Tables, SQL Joins, Node.js MVC Architecture.</p>
+    </div>
+  </div>
+  <div class="foot-base">&copy; 2026 DormEase. Integrated Student Boarding House & Utility Management System.</div>
+</footer>
+
+<!-- Modals Container -->
+<div id="modalContainer" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modalTitle">Modal Header</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div id="modalBody" class="modal-body">
+      <!-- Dynamic Content Loaded Here -->
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/users.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/leases.js"></script>
+<script src="js/utilities.js"></script>
+<script src="js/invoices.js"></script>
+<script src="js/reports.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Illustration of a boarding house room">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc7ee"/><stop offset="1" stop-color="#d9eefb"/></linearGradient><linearGradient id="shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".07"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>
+<rect width="800" height="600" fill="#eceff0"/>
+<rect width="800" height="440" fill="url(#shade)"/>
+<rect y="430" width="800" height="14" fill="#cacdce"/>
+<rect y="444" width="800" height="156" fill="#c1a37f"/>
+<line x1="20" y1="444" x2="-80" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="120" y1="444" x2="50" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="220" y1="444" x2="180" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="320" y1="444" x2="310" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="420" y1="444" x2="440" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="520" y1="444" x2="570" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="620" y1="444" x2="700" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="720" y1="444" x2="830" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<line x1="820" y1="444" x2="960" y2="600" stroke="#ad8f6b" stroke-width="2"/>
+<rect y="444" width="800" height="22" fill="#000" opacity=".06"/>
+<rect x="512" y="70" width="210" height="200" rx="4" fill="#fff"/>
+<rect x="520" y="78" width="194" height="184" fill="url(#sky)"/>
+<circle cx="660" cy="124" r="20" fill="#ffe9a8"/>
+<ellipse cx="574" cy="138" rx="38" ry="12" fill="#fff" opacity=".9"/>
+<ellipse cx="600" cy="128" rx="26" ry="9" fill="#fff" opacity=".9"/>
+<path d="M520 78h194v50l-30-18-34 22-40-30-48 28-42-20z" fill="#3f7f5c" opacity=".55" transform="translate(0 134)"/>
+<rect x="614" y="78" width="6" height="184" fill="#fff"/>
+<rect x="520" y="168" width="194" height="6" fill="#fff"/>
+<rect x="504" y="268" width="226" height="10" rx="3" fill="#fff"/>
+<path d="M490 60h46v212q-23 10-46 0z" fill="#cfd8dc"/>
+<path d="M716 60h46v212q-23 10-46 0z" fill="#cfd8dc"/>
+<rect x="476" y="56" width="290" height="6" rx="3" fill="#6b5b4b"/>
+<rect x="330" y="96" width="92" height="120" rx="4" fill="#fff"/><rect x="340" y="106" width="72" height="100" fill="#629bd2" opacity=".85"/>
+<circle cx="376" cy="150" r="20" fill="#fff" opacity=".7"/><path d="M340 206l30-44 22 28 12-14 8 30z" fill="#3f6386"/>
+<line x1="190" y1="0" x2="190" y2="54" stroke="#555" stroke-width="5"/><circle cx="190" cy="58" r="14" fill="#444"/>
+<ellipse cx="130" cy="62" rx="62" ry="9" fill="#8a6d4b" transform="rotate(-6 130 62)"/><ellipse cx="250" cy="62" rx="62" ry="9" fill="#8a6d4b" transform="rotate(6 250 62)"/>
+<rect x="90" y="250" width="270" height="170" rx="10" fill="#7c5f3f"/>
+<rect x="92" y="402" width="266" height="30" rx="4" fill="#674f35"/>
+<rect x="100" y="316" width="250" height="116" rx="12" fill="#fff"/>
+<rect x="100" y="350" width="250" height="82" rx="10" fill="#4f7ca8"/>
+<rect x="100" y="380" width="250" height="14" fill="#e1eaf3"/>
+<rect x="110" y="312" width="96" height="40" rx="16" fill="#fff"/>
+<rect x="110" y="312" width="96" height="40" rx="16" fill="#e1eaf3" opacity=".5"/>
+<rect x="360" y="384" width="44" height="60" rx="3" fill="#8a6a47"/>
+<path d="M360 384l8-26h20l8 26z" fill="#ffe08a"/>
+<rect x="600" y="180" width="130" height="6" rx="3" fill="#6b5b4b"/>
+<path d="M612 186h30l-4 90h-22z" fill="#d9825b"/>
+<path d="M650 186h30l-4 90h-22z" fill="#4f7ca8"/>
+<path d="M688 186h30l-4 90h-22z" fill="#e0b94f"/>
+</svg>
