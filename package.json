@@ -1,0 +1,27 @@
+{
+  "name": "dormease",
+  "version": "1.0.0",
+  "description": "DormEase: Integrated Student Boarding House Room Reservation and Utility Billing Management System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node tests/unit_test_slices.js",
+    "test:api": "node tests/test_all_slices.js"
+  },
+  "keywords": [
+    "boarding-house",
+    "dormitory-management",
+    "utility-billing",
+    "mvc",
+    "express",
+    "sqlite",
+    "student-housing"
+  ],
+  "author": "DormEase Development Team",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
+  }
+}
