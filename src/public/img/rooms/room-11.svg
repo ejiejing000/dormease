@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Illustration of a boarding house room">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc7ee"/><stop offset="1" stop-color="#d9eefb"/></linearGradient><linearGradient id="shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".07"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>
+<rect width="800" height="600" fill="#e9eef3"/>
+<rect width="800" height="440" fill="url(#shade)"/>
+<rect y="430" width="800" height="14" fill="#c8ccd0"/>
+<rect y="444" width="800" height="156" fill="#c5a27b"/>
+<line x1="20" y1="444" x2="-80" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="120" y1="444" x2="50" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="220" y1="444" x2="180" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="320" y1="444" x2="310" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="420" y1="444" x2="440" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="520" y1="444" x2="570" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="620" y1="444" x2="700" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="720" y1="444" x2="830" y2="600" stroke="#b08e68" stroke-width="2"/>
+<line x1="820" y1="444" x2="960" y2="600" stroke="#b08e68" stroke-width="2"/>
+<rect y="444" width="800" height="22" fill="#000" opacity=".06"/>
+<rect x="512" y="70" width="210" height="200" rx="4" fill="#fff"/>
+<rect x="520" y="78" width="194" height="184" fill="url(#sky)"/>
+<circle cx="660" cy="124" r="20" fill="#ffe9a8"/>
+<ellipse cx="574" cy="138" rx="38" ry="12" fill="#fff" opacity=".9"/>
+<ellipse cx="600" cy="128" rx="26" ry="9" fill="#fff" opacity=".9"/>
+<path d="M520 78h194v50l-30-18-34 22-40-30-48 28-42-20z" fill="#3f7f5c" opacity=".55" transform="translate(0 134)"/>
+<rect x="614" y="78" width="6" height="184" fill="#fff"/>
+<rect x="520" y="168" width="194" height="6" fill="#fff"/>
+<rect x="504" y="268" width="226" height="10" rx="3" fill="#fff"/>
+<path d="M490 60h46v212q-23 10-46 0z" fill="#f0c27b"/>
+<path d="M716 60h46v212q-23 10-46 0z" fill="#f0c27b"/>
+<rect x="476" y="56" width="290" height="6" rx="3" fill="#6b5b4b"/>
+<rect x="330" y="96" width="92" height="120" rx="4" fill="#fff"/><rect x="340" y="106" width="72" height="100" fill="#5c8ace" opacity=".85"/>
+<circle cx="376" cy="150" r="20" fill="#fff" opacity=".7"/><path d="M340 206l30-44 22 28 12-14 8 30z" fill="#3b5884"/>
+<rect x="90" y="250" width="270" height="170" rx="10" fill="#7c5f3f"/>
+<rect x="92" y="402" width="266" height="30" rx="4" fill="#674f35"/>
+<rect x="100" y="316" width="250" height="116" rx="12" fill="#fff"/>
+<rect x="100" y="350" width="250" height="82" rx="10" fill="#4a6fa5"/>
+<rect x="100" y="380" width="250" height="14" fill="#dde7f3"/>
+<rect x="110" y="312" width="96" height="40" rx="16" fill="#fff"/>
+<rect x="110" y="312" width="96" height="40" rx="16" fill="#dde7f3" opacity=".5"/>
+<rect x="360" y="384" width="44" height="60" rx="3" fill="#8a6a47"/>
+<path d="M360 384l8-26h20l8 26z" fill="#ffe08a"/>
+<rect x="600" y="352" width="170" height="12" rx="3" fill="#8a6a47"/>
+<rect x="608" y="364" width="8" height="84" fill="#6f5439"/><rect x="754" y="364" width="8" height="84" fill="#6f5439"/>
+<rect x="622" y="318" width="64" height="34" rx="3" fill="#2d3640"/><rect x="615" y="350" width="78" height="4" rx="2" fill="#aab2b9"/>
+<rect x="626" y="326" width="56" height="20" fill="#9ed0f5"/>
+<rect x="738" y="318" width="10" height="34" fill="#ffd166"/><path d="M738 318l-24-6" stroke="#ffd166" stroke-width="5"/>
+<rect x="650" y="372" width="62" height="10" rx="4" fill="#3e5e8c"/><rect x="700" y="326" width="10" height="46" rx="4" fill="#3e5e8c"/>
+<rect x="674" y="382" width="6" height="64" fill="#444"/>
+<path d="M742 444l-8 -44h44l-8 44z" fill="#c4704f"/>
+<ellipse cx="756" cy="365" rx="12" ry="35" fill="#4f9d69" transform="rotate(-35 756 400)"/>
+<ellipse cx="756" cy="355" rx="12" ry="45" fill="#4f9d69" transform="rotate(0 756 400)"/>
+<ellipse cx="756" cy="365" rx="12" ry="35" fill="#4f9d69" transform="rotate(35 756 400)"/>
+<ellipse cx="756" cy="372" rx="12" ry="28" fill="#4f9d69" transform="rotate(-15 756 400)"/>
+<ellipse cx="756" cy="372" rx="12" ry="28" fill="#4f9d69" transform="rotate(18 756 400)"/>
+</svg>
