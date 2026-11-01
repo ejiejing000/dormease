@@ -77,7 +77,16 @@ class LeaseController {
                     message: `Room ${room.room_number} is currently OCCUPIED and cannot be leased.`
                 });
             }
+	              
 
+	    // Monthly rent must be a positive number
+            if (isNaN(Number(monthly_rent_amount)) || Number(monthly_rent_amount) <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Monthly rent amount must be a positive number.'
+                });
+            }
+	
 	    // Lease end date must not be earlier than the start date
             if (new Date(lease_end_date) < new Date(lease_start_date)) {
                 return res.status(400).json({
