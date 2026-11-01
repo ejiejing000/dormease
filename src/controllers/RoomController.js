@@ -145,7 +145,12 @@ class RoomController {
                     message: 'Cannot delete an OCCUPIED room with an active lease. Please terminate the lease first.'
                 });
             }
-
+           if (RoomModel.hasLeases(id)) {
+               return res.status(400).json({
+                   success: false,
+                   message: 'Cannot delete a room that has lease records. Terminate or remove the lease first.'
+               });
+           }
             const deleted = RoomModel.delete(id);
             if (!deleted) {
                 return res.status(400).json({

@@ -122,7 +122,11 @@ class RoomModel {
         UserModel.logAudit(null, 'UPDATE_ROOM', 'rooms', id, `Updated Room ${id} (${updatedNum})`);
         return this.getById(id);
     }
-
+    // Check if any lease (active or old) refers to this room
+    static hasLeases(id) {
+        const row = db.get('SELECT COUNT(*) AS count FROM leases WHERE room_id = ?', [id]);
+        return row.count > 0;
+    }
     // Delete room
     static delete(id) {
         const current = this.getById(id);
