@@ -78,7 +78,18 @@ class LeaseController {
                 });
             }
 
-            const newLease = LeaseModel.create({
+            // Security deposit must be at least 2 months of rent
+            if (security_deposit !== undefined && security_deposit !== null && security_deposit !== '') {
+                const minimumDeposit = Number(monthly_rent_amount) * 2;
+                if (Number(security_deposit) < minimumDeposit) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Security deposit must be at least 2 months of rent (${minimumDeposit}).`
+                    });
+                }
+            }
+
+	    const newLease = LeaseModel.create({
                 room_id: Number(room_id),
                 tenant_id: Number(tenant_id),
                 lease_start_date,
