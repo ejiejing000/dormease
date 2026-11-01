@@ -7,7 +7,7 @@ const UserModel = require('./UserModel');
 
 class RoomModel {
     // List all rooms with property name, category name, base rate
-    static getAll({ status, property_id, category_id } = {}) {
+    static getAll({ status, property_id, category_id, floor } = {}) {
         let sql = `
             SELECT r.id, r.room_number, r.floor_number, r.aircon_equipped, r.status,
                    p.id AS property_id, p.property_name, p.address AS property_address,
@@ -29,6 +29,10 @@ class RoomModel {
         if (category_id) {
             sql += ` AND r.category_id = ?`;
             params.push(category_id);
+        }
+        if (floor) {
+            sql += ` AND r.floor_number = ?`;
+            params.push(floor);
         }
         sql += ` ORDER BY r.floor_number ASC, r.room_number ASC`;
         return db.query(sql, params);
