@@ -7,8 +7,8 @@ class RoomController {
     // GET /api/rooms
     static getAll(req, res) {
         try {
-            const { status, property_id, category_id, floor } = req.query;
-            const rooms = RoomModel.getAll({ status, property_id, category_id, floor });
+            const { status, property_id, category_id, floor, aircon } = req.query;
+            const rooms = RoomModel.getAll({ status, property_id, category_id, floor, aircon });
             return res.status(200).json({
                 success: true,
                 message: 'Rooms retrieved successfully',
