@@ -66,7 +66,14 @@ class RoomModel {
         room.amenities = db.query(amenitiesSql, [id]);
         return room;
     }
-
+        // Check if a room number is already used in a property
+       static roomNumberExists(property_id, room_number) {
+           const row = db.get(
+               'SELECT id FROM rooms WHERE property_id = ? AND room_number = ?',
+               [property_id, room_number]
+           );
+           return !!row;
+       }
     // Create a new room
     static create({ property_id, category_id, room_number, floor_number = 1, aircon_equipped = 0, status = 'AVAILABLE', amenity_ids = [] }) {
         const sql = `

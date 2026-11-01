@@ -53,14 +53,19 @@ class RoomController {
     static create(req, res) {
         try {
             const { property_id, category_id, room_number, floor_number, aircon_equipped, status, amenity_ids } = req.body;
-
             if (!property_id || !category_id || !room_number) {
                 return res.status(400).json({
                     success: false,
                     message: 'Missing required fields: property_id, category_id, and room_number are mandatory.'
                 });
             }
-
+           const number = String(room_number).trim();
+           if (RoomModel.roomNumberExists(Number(property_id), number)) {
+               return res.status(409).json({
+                   success: false,
+                   message: `Room ${number} already exists in this property.`
+               });
+           }
             const newRoom = RoomModel.create({
                 property_id: Number(property_id),
                 category_id: Number(category_id),
