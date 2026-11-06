@@ -11,7 +11,7 @@ table to match commits to people.
 
 | Member | Name | GitHub username | Branch | Feature area |
 | --- | --- | --- | --- | --- |
-| 1 |  |  | `feature/00-core-auth` | Core platform, security, staff admin, public room discovery |
+| 1 | Ejie Mar Q. Bongcawel | ejiejing000 | `feature/00-core-auth` | Core platform, security, staff admin, public room discovery |
 | 2 |  |  | `feature/10-properties` | Houses, rooms and amenities |
 | 3 |  |  | `feature/20-tenants-leases` | Tenants, leases, reservations, waitlist |
 | 4 |  |  | `feature/30-utilities-billing` | Rates, readings, billing, payments |
@@ -205,7 +205,7 @@ visible. No member commits another member's files.
 
 | # | GitHub | Branch | Topic / feature | Tables owned | Schema + seed fragment | Complete CRUD resource | Join report endpoint | Frontend screens |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 |  | `feature/00-core-auth` | Core platform, security, staff administration, visitor room discovery | `users`, `staff_assignments`, `audit_logs` | `schema/01_core.sql`, `seed/00_core.sql`, `seed/15_staff.sql`, `schema/99_integration.sql` | Staff accounts: list, create, update, deactivate (`DELETE`) + auth session | `GET /api/staff/coverage` — LEFT JOIN users → assignments → houses | `login.html`, `dashboard.html`, `tenant-dashboard.html`, `staff.html`, `audit.html`, `reports.html`, public `index.html` / `browse-rooms.html` / `room-details.html` / `about.html` |
+| 1 | ejiejing000 | `feature/00-core-auth` | Core platform, security, staff administration, visitor room discovery | `users`, `staff_assignments`, `audit_logs` | `schema/01_core.sql`, `seed/00_core.sql`, `seed/15_staff.sql`, `schema/99_integration.sql` | Staff accounts: list, create, update, deactivate (`DELETE`) + auth session | `GET /api/staff/coverage` — LEFT JOIN users → assignments → houses | `login.html`, `dashboard.html`, `tenant-dashboard.html`, `staff.html`, `audit.html`, `reports.html`, public `index.html` / `browse-rooms.html` / `room-details.html` / `about.html` |
 | 2 |  | `feature/10-properties` | Houses, rooms and amenities | `houses`, `rooms`, `room_amenities`, `room_amenity_map` | `schema/02_properties.sql`, `seed/10_properties.sql` | Houses and rooms: list, get, create, update, delete (guarded) | `GET /api/rooms/vacancy-report` — RIGHT JOIN tenancies → rooms | `houses.html`, `rooms.html` |
 | 3 |  | `feature/20-tenants-leases` | Tenants, leases, reservations and waitlist | `tenants`, `tenancies`, `reservations`, `reservation_events`, `waitlist` | `schema/03_tenants_leases.sql`, `seed/20_tenants_leases.sql` | Tenants: list, get, create, update, delete (history-guarded) | `GET /api/tenancies/register` — INNER JOIN tenancies → tenants → rooms → houses | `tenants.html`, `lease.html`, `reservations.html` |
 | 4 |  | `feature/30-utilities-billing` | Utility rates, meter readings, bills and payments | `utility_types`, `utility_rates`, `rate_tiers`, `meter_readings`, `bills`, `bill_items`, `payments` | `schema/04_billing.sql`, `seed/30_billing.sql` | Bills: list, get, generate/create, patch, void/delete | `GET /api/bills/ledger` — FULL OUTER JOIN bills ↔ payments (LEFT JOIN + RIGHT JOIN branch) | `rates.html`, `readings.html`, `bills.html`, `payments.html` |
