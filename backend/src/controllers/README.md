@@ -1,0 +1,1 @@
+Controllers validate request data, call models, and choose HTTP status codes.
