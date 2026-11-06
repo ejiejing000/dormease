@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browse Rooms | DORMEASE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/nav.js"></script>
+  <script defer src="js/public.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Browse available rooms</h1>
+      <p class="muted">Prices are per bed, per month. Availability updates as leases and holds change.</p>
+      <form id="browse-filters" class="filters">
+        <label>Keyword<input name="q" placeholder="room number, house, address"></label>
+        <label>Boarding house<select name="houseId"><option value="">All boarding houses</option></select></label>
+        <label>Room type<select name="coolingType">
+          <option value="">Any</option><option value="fan">Fan</option><option value="aircon">Air-conditioned</option><option value="none">No cooling</option>
+        </select></label>
+        <label>Max rent<input name="maxRent" type="number" min="0" placeholder="e.g. 4000"></label>
+        <label>Min rent<input name="minRent" type="number" min="0" placeholder="e.g. 2000"></label>
+        <label>Sort<select name="sort"><option value="">Default</option><option value="price_asc">Price low to high</option><option value="price_desc">Price high to low</option><option value="newest">Newest first</option></select></label>
+        <label class="check"><input type="checkbox" name="availableOnly" value="true" checked>Available only</label>
+        <button type="submit">Apply filters</button>
+      </form>
+      <p id="message" class="muted"></p>
+    </section>
+    <div id="room-results"><p class="muted">Loading rooms…</p></div>
+  </main>
+
+  <footer>DORMEASE — browse first, sign in only when you need your bills.</footer>
+</body>
+</html>

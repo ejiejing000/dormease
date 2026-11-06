@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staff Accounts | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="notice">Staff accounts exist only because a landlord created them. There is no public staff sign-up, and every request a staff member makes is re-checked against their house assignments; a room outside their scope returns 404 rather than 403 so it cannot be probed.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Staff accounts',
+  roles: ['landlord'],
+  endpoint: '/staff',
+  createLabel: 'Create a staff account',
+  serialize: (data) => ({
+    ...data,
+    house_ids: String(data.house_ids || '').split(',').map(v => Number(v.trim())).filter(Boolean),
+    password: data.password || undefined
+  }),
+  createdMessage: (staff) => staff.temporary_password
+    ? `Staff #${staff.id} created. Temporary password (shown once, also queued for email): ${staff.temporary_password}`
+    : `Staff #${staff.id} created with the password you set.`,
+  fields: [
+    { name: 'full_name', label: 'Full name', required: true },
+    { name: 'email', label: 'Work email', type: 'email', required: true },
+    { name: 'house_ids', label: 'House ids, comma separated', required: true },
+    { name: 'password', label: 'Password (leave empty to generate one)', type: 'password' },
+    { name: 'can_manage_rates', label: 'May change utility rates', type: 'checkbox' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'full_name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'house_names', label: 'Assigned houses', render: (r) => escapeHtml((r.house_names || []).join(', ') || 'none') },
+    { key: 'can_manage_rates', label: 'Rate rights', format: 'bool' },
+    { key: 'is_active', label: 'Active', format: 'bool' },
+    { key: 'created_at', label: 'Created', format: 'date' }
+  ],
+  rowActions: [
+    {
+      label: () => 'Reassign houses',
+      path: (id) => `/staff/${id}/houses`,
+      method: 'PUT',
+      fields: [
+        { name: 'house_ids', label: 'House ids, comma separated', required: true },
+        { name: 'can_manage_rates', label: 'May change rates? true / false', type: 'boolean', value: 'true' }
+      ]
+    },
+    {
+      label: () => 'Reset password',
+      path: (id) => `/staff/${id}/password`,
+      fields: [{ name: 'password', label: 'New password (at least 10 characters)', required: true }],
+      done: () => 'Password reset. Hand it over out of band; the account holder should change it after signing in.'
+    },
+    {
+      label: (r) => r.is_active ? 'Deactivate' : 'Already inactive',
+      path: (id) => `/staff/${id}`,
+      method: 'DELETE',
+      confirm: (r) => `Deactivate ${r.full_name}? They will be signed out of the management portal.`,
+      done: () => 'Staff account deactivated.'
+    }
+  ]
+}));
+</script>
+</body>
+</html>

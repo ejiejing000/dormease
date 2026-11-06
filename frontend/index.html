@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DORMEASE — Find your next boarding house room</title>
+  <meta name="description" content="Browse available student boarding-house rooms, compare prices and request a room without creating an account.">
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/nav.js"></script>
+  <script defer src="js/public.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Find your next boarding house</h1>
+      <p>Browse real available rooms, compare monthly rates and amenities, and send a reservation request — no login needed. Once staff approve your request, you get a tenant account for bills, receipts and maintenance tickets.</p>
+      <a class="button-link" href="browse-rooms.html">Browse available rooms</a>
+      <a class="button-link ghost" href="pages/login.html">Tenant or staff sign in</a>
+    </section>
+
+    <section class="card">
+      <h2>Rooms available now</h2>
+      <p class="muted">Live availability calculated from active leases and current holds.</p>
+      <div id="featured-rooms"><p class="muted">Loading rooms…</p></div>
+      <p><a class="button-link ghost" href="browse-rooms.html">See all rooms and filters</a></p>
+    </section>
+
+    <section class="card">
+      <h2>How DORMEASE works</h2>
+      <div class="grid">
+        <div class="stat"><b>1. Browse</b><p class="muted">Anyone can view rooms, prices and availability. No account, no role selection.</p></div>
+        <div class="stat"><b>2. Request</b><p class="muted">Send your name, contact number and preferred move-in date for the room you like.</p></div>
+        <div class="stat"><b>3. Approval</b><p class="muted">Only an authorised landlord or staff member approves or rejects requests.</p></div>
+        <div class="stat"><b>4. Tenant account</b><p class="muted">Approved applicants receive a one-time link to set a password, then see bills and receipts.</p></div>
+      </div>
+      <p class="notice">You cannot register as a landlord or staff member. Management accounts are created by an existing landlord, and tenant accounts are provisioned by landlord or staff after approval.</p>
+      <p><a href="request-status.html">Check the status of a reservation request</a></p>
+    </section>
+  </main>
+
+  <footer>DORMEASE — public room discovery with a private boarding-house management system.</footer>
+</body>
+</html>

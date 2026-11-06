@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+  <h1>Reports</h1>
+  <p class="muted" id="message"></p>
+
+  <div class="grid" id="summary"></div>
+
+  <section class="card">
+    <h2>Collection status</h2>
+    <div class="table-wrap"><table id="collections"><thead><tr>
+      <th>Status</th><th>Bills</th><th>Billed</th><th>Collected</th><th>Outstanding</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Occupancy by house</h2>
+    <div class="table-wrap"><table id="occupancy"><thead><tr>
+      <th>House</th><th>Rooms</th><th>Beds</th><th>Occupied</th><th>Free</th><th>Occupancy</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Cash collected per month</h2>
+    <div class="table-wrap"><table id="income"><thead><tr><th>Month</th><th>Collected</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>One tenant statement</h2>
+    <p class="muted">Enter a tenant id to see their leases, bills and balances.</p>
+    <form id="statement-form" class="filters">
+      <label>Tenant id<input type="number" name="tenantId" min="1" required></label>
+      <button type="submit">Show statement</button>
+    </form>
+    <div id="statement"></div>
+  </section>
+
+  <p class="notice">Every report is computed with the same house scoping as the rest of the API: staff see only their assigned houses, landlords only the houses they own.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireRole('landlord', 'staff')) return;
+
+  const rows = (id, list, render, empty) => {
+    document.querySelector(`#${id} tbody`).innerHTML = list.length
+      ? list.map(render).join('')
+      : `<tr><td colspan="${empty}" class="muted">No data for the houses you are authorised for.</td></tr>`;
+  };
+
+  try {
+    const reports = await api('/reports');
+    document.querySelector('#summary').innerHTML = [
+      ['Active leases', reports.summary.active_tenancies],
+      ['Pending requests', reports.summary.pending_requests],
+      ['Open tickets', reports.summary.open_tickets],
+      ['Outstanding billing', formatMoney(reports.summary.outstanding)]
+    ].map(([label, value]) => `<div class="stat"><b>${escapeHtml(value)}</b>${escapeHtml(label)}</div>`).join('');
+
+    rows('collections', reports.collections, c => `<tr>
+      <td><span class="badge ${escapeHtml(c.status)}">${escapeHtml(c.status)}</span></td>
+      <td>${c.bills}</td><td>${formatMoney(c.billed)}</td><td>${formatMoney(c.collected)}</td><td>${formatMoney(c.outstanding)}</td></tr>`, 5);
+
+    rows('occupancy', reports.occupancy, o => `<tr>
+      <td>${escapeHtml(o.name)}</td><td>${o.rooms}</td><td>${o.beds}</td>
+      <td>${o.occupied_beds}</td><td>${o.free_beds}</td><td>${o.occupancy_rate}%</td></tr>`, 6);
+
+    const income = await api('/reports/income?months=12');
+    rows('income', income, i => `<tr><td>${escapeHtml(i.month)}</td><td>${formatMoney(i.income)}</td></tr>`, 2);
+    showMessage('');
+  } catch (error) {
+    showMessage(error.message, true);
+  }
+
+  document.querySelector('#statement-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const tenantId = new FormData(event.target).get('tenantId');
+    try {
+      const statement = await api(`/reports/tenants/${encodeURIComponent(tenantId)}`);
+      const totalBilled = statement.bills.reduce((sum, b) => sum + Number(b.total_amount), 0);
+      const totalOutstanding = statement.bills.reduce((sum, b) => sum + Number(b.outstanding), 0);
+      document.querySelector('#statement').innerHTML = `
+        <p class="muted">Lease history: ${statement.tenancies.length} record(s). Billed ${formatMoney(totalBilled)}, still owed ${formatMoney(totalOutstanding)}.</p>
+        <div class="table-wrap"><table><thead><tr><th>Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Due</th></tr></thead><tbody>
+          ${statement.bills.map(b => `<tr><td>${formatDate(b.month + '-01')}</td><td>${formatMoney(b.total_amount)}</td>
+            <td>${formatMoney(b.paid)}</td><td>${formatMoney(b.outstanding)}</td>
+            <td><span class="badge ${escapeHtml(b.status)}">${escapeHtml(b.status)}</span></td><td>${formatDate(b.due_date)}</td></tr>`).join('')}
+        </tbody></table></div>` + (statement.tenancies.length ? `
+        <table><thead><tr><th>Lease</th><th>House</th><th>Room</th><th>Start</th><th>Status</th></tr></thead><tbody>
+          ${statement.tenancies.map(t => `<tr><td>${t.id}</td><td>${escapeHtml(t.house_name)}</td><td>${escapeHtml(t.room_number)}</td>
+            <td>${formatDate(t.start_date)}</td><td><span class="badge ${escapeHtml(t.status)}">${escapeHtml(t.status)}</span></td></tr>`).join('')}
+        </tbody></table>` : '');
+    } catch (error) {
+      document.querySelector('#statement').innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+    }
+  });
+});
+</script>
+</body>
+</html>

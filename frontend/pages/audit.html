@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audit Log | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="notice">The audit trail is written by the API itself on every state change, including the system job. It is read-only over HTTP: there is no create, update or delete endpoint, and only a landlord can read it.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Audit log',
+  roles: ['landlord'],
+  endpoint: '/audit-logs',
+  filters: [
+    { name: 'entityType', label: 'Entity type', type: 'select', options: [['', 'All entities'], ['rooms', 'rooms'], ['houses', 'houses'], ['tenants', 'tenants'], ['tenancies', 'tenancies'], ['reservations', 'reservations'], ['reservation_request', 'reservation requests'], ['bills', 'bills'], ['payments', 'payments'], ['maintenance_tickets', 'tickets'], ['utility_rates', 'utility rates'], ['meter_readings', 'meter readings'], ['users', 'users'], ['notifications', 'notifications'], ['auth', 'sign-in']] },
+    { name: 'action', label: 'Action contains' },
+    { name: 'actorId', label: 'Actor user id', type: 'number' },
+    { name: 'limit', label: 'Max rows', type: 'number', value: '100' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'created_at', label: 'When', format: 'date' },
+    { key: 'actor_name', label: 'Actor', render: (r) => escapeHtml(r.actor_name || 'system') },
+    { key: 'action', label: 'Action' },
+    { key: 'entity_type', label: 'Entity' },
+    { key: 'entity_id', label: 'Entity id' },
+    { key: 'details', label: 'Details', render: (r) => escapeHtml(typeof r.details === 'string' ? r.details : JSON.stringify(r.details ?? '')) }
+  ],
+  rowActions: []
+}));
+</script>
+</body>
+</html>

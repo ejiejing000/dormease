@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About DORMEASE | DORMEASE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/nav.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>About DORMEASE</h1>
+      <p>DORMEASE is a public room-discovery site with a private boarding-house management system behind it. Finding a room, becoming a tenant and managing a house are three separate processes.</p>
+      <h2>Three access areas</h2>
+      <div class="grid">
+        <div class="stat"><b>Public website</b><p class="muted">No login: browse rooms, filter by price and type, view house information and submit a reservation request.</p></div>
+        <div class="stat"><b>Tenant portal</b><p class="muted">Accounts provisioned by staff: monthly rent and utility bills, itemised receipts, payment history, maintenance tickets and announcements.</p></div>
+        <div class="stat"><b>Landlord &amp; staff</b><p class="muted">Authorised accounts only: tenants, rooms, reservation approval, bill generation, utility rates, tickets, staff assignment and audit history.</p></div>
+      </div>
+      <h2>Who can do what</h2>
+      <table>
+        <thead><tr><th>Action</th><th>Visitor</th><th>Tenant</th><th>Staff</th><th>Landlord</th></tr></thead>
+        <tbody>
+          <tr><td>Browse available rooms</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Submit a reservation request</td><td>Yes</td><td>—</td><td>—</td><td>—</td></tr>
+          <tr><td>View own bills and receipts</td><td>—</td><td>Yes</td><td>—</td><td>Yes</td></tr>
+          <tr><td>Submit a maintenance ticket</td><td>—</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Approve reservation requests</td><td>—</td><td>—</td><td>Yes (assigned houses)</td><td>Yes</td></tr>
+          <tr><td>Add or edit rooms and tenants</td><td>—</td><td>—</td><td>Yes (assigned houses)</td><td>Yes</td></tr>
+          <tr><td>Configure utility rates</td><td>—</td><td>—</td><td>Only when the assignment allows it</td><td>Yes</td></tr>
+          <tr><td>Create staff accounts</td><td>—</td><td>—</td><td>—</td><td>Yes</td></tr>
+          <tr><td>View audit logs</td><td>—</td><td>—</td><td>—</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+      <h2>Smart Utility Billing</h2>
+      <p>Billing starts when someone becomes an official tenant — not when a visitor submits a request. Staff record water and electricity meter readings; the system applies tiered rates, house fixed charges, move-in proration and roommate shares, then issues an itemised bill with a due date. Recorded payments update the balance and produce a receipt.</p>
+      <h2>Do I need an account?</h2>
+      <p>Not to browse or request a room. You need the account staff provision for you to see bills, download receipts and track maintenance tickets. There is no public registration for landlords or staff, and the login page never asks you to choose a role — the server decides from the account record.</p>
+      <p><a class="button-link" href="browse-rooms.html">Start browsing rooms</a></p>
+    </section>
+  </main>
+
+  <footer>DORMEASE — public discovery, private management, role-based access.</footer>
+</body>
+</html>

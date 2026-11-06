@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | DORMEASE</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script defer src="../js/api.js"></script>
+  <script defer src="../js/nav.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Sign in</h1>
+      <p class="muted">There is no role to choose here. The system reads your role from your account record and sends you to the right dashboard.</p>
+      <form id="login-form">
+        <label>Email<input name="email" type="email" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Sign in</button>
+      </form>
+      <p id="message" class="muted"></p>
+      <p class="notice">Tenants and staff receive accounts from an authorised landlord or staff member. If you were invited by email, use
+        <a href="set-password.html">this link to set your password</a>. DORMEASE has no public registration.</p>
+      <p><a href="../index.html">Continue browsing rooms instead</a></p>
+    </section>
+  </main>
+
+  <footer>DormEase student boarding-house management system.</footer>
+  <script>
+    document.querySelector('#login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.target;
+      try {
+        const data = await api('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: form.email.value.trim(),
+            password: form.password.value
+          })
+        });
+        setSession(data);
+        const requested = new URLSearchParams(location.search).get('next');
+        const safe = requested && /^[\w-]+\.html$/.test(requested) ? requested : null;
+        location.href = safe || data.user.dashboard || 'dashboard.html';
+      } catch (e) {
+        showMessage(e.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

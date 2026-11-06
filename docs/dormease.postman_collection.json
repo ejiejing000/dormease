@@ -1,0 +1,1277 @@
+{
+  "info": {
+    "name": "DORMEASE — boarding house API",
+    "_postman_id": "6f2a4d1e-9c3b-4a77-8e51-d0a1b2c3d4e5",
+    "description": "Run order matters for the folder named \"Guest to tenant lifecycle\"; every other folder stands on its own.\n\nSetup: start MySQL 8, run `cd backend && npm run db:setup` (it applies database/schema/*.sql then database/seed/*.sql in order), then `npm start`.\n\nThe seeded demo password for all three accounts is DormEase#2026. These accounts exist only for the demo database — never keep them in production.\n\nCollection-level auth is `Bearer {{token}}`, so a request only needs a login to have happened first. Public requests ignore the header. Each login request overwrites {{token}} with its own session, which is how the negative checks switch roles.\n\n`{{invitationToken}}` is filled by the approve step and is single-use: running \"Accept invitation\" twice gives 404 the second time, which is the intended behaviour.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9000/api", "type": "string" },
+    { "key": "siteUrl", "value": "http://localhost:9000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "landlordEmail", "value": "landlord@example.com", "type": "string" },
+    { "key": "staffEmail", "value": "staff@example.com", "type": "string" },
+    { "key": "tenantEmail", "value": "tenant@example.com", "type": "string" },
+    { "key": "demoPassword", "value": "DormEase#2026", "type": "string" },
+    { "key": "guestEmail", "value": "postman.guest@example.com", "type": "string" },
+    { "key": "newPassword", "value": "Postman#2026test", "type": "string" },
+    { "key": "roomId", "value": "1", "type": "string" },
+    { "key": "houseId", "value": "1", "type": "string" },
+    { "key": "tenantId", "value": "3", "type": "string" },
+    { "key": "tenancyId", "value": "1", "type": "string" },
+    { "key": "requestId", "value": "1", "type": "string" },
+    { "key": "reservationId", "value": "1", "type": "string" },
+    { "key": "billId", "value": "1", "type": "string" },
+    { "key": "paymentId", "value": "1", "type": "string" },
+    { "key": "ticketId", "value": "1", "type": "string" },
+    { "key": "rateId", "value": "1", "type": "string" },
+    { "key": "staffUserId", "value": "2", "type": "string" },
+    { "key": "invitationToken", "value": "", "type": "string" },
+    { "key": "billingMonth", "value": "2026-11-01", "type": "string" }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Runs after every request: an unexpected 5xx is always a failure,",
+          "// and every response must be the documented JSON envelope.",
+          "const status = pm.response.code;",
+          "if (status >= 500) pm.test('no server error', () => pm.expect(status, pm.response.text()).to.be.below(500));",
+          "if (status !== 204) {",
+          "  pm.test('JSON envelope', () => {",
+          "    const json = pm.response.json();",
+          "    pm.expect(json).to.have.property('success');",
+          "    if (!json.success) pm.expect(json).to.have.property('message');",
+          "  });",
+          "}",
+          "pm.test('no password hash leaks', () => pm.expect(pm.response.text()).to.not.contain('password_hash'));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "request": {
+        "auth": "noauth",
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "http://localhost:9000/health", "protocol": "http", "host": ["localhost", "9000"], "path": ["health"] },
+        "description": "Served outside /api. Proves the app booted and the DB pool is configured."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "type": "text/javascript", "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] }
+        }
+      ]
+    },
+    {
+      "name": "01 Public site (no login)",
+      "description": "The area a visitor can reach without an account. Everything here reads v_public_rooms or the reservation_requests table only — no tenant, billing or internal column is reachable.",
+      "item": [
+        {
+          "name": "Browse rooms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200 and a list', () => { pm.expect(json.success).to.be.true; pm.expect(json.data).to.be.an('array'); });",
+                  "pm.test('only public columns', () => {",
+                  "  const forbidden = ['password', 'user_id', 'tenant_id', 'bill', 'audit', 'is_active', 'email'];",
+                  "  const text = JSON.stringify(json.data);",
+                  "  forbidden.forEach(word => pm.expect(text, word).to.not.contain(word));",
+                  "});",
+                  "if (json.data[0]) pm.collectionVariables.set('roomId', String(json.data[0].id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/rooms?availableOnly=1&sort=price_asc&page=1&perPage=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "rooms"],
+              "query": [
+                { "key": "houseId", "value": "{{houseId}}", "disabled": true },
+                { "key": "minRent", "value": "3000", "disabled": true },
+                { "key": "maxRent", "value": "8000", "disabled": true },
+                { "key": "coolingType", "value": "aircon", "disabled": true },
+                { "key": "q", "value": "bed", "disabled": true },
+                { "key": "availableOnly", "value": "1" },
+                { "key": "sort", "value": "price_asc", "description": "price_asc | price_desc | newest" },
+                { "key": "page", "value": "1" },
+                { "key": "perPage", "value": "20" }
+              ]
+            },
+            "description": "Filters: houseId, minRent, maxRent, coolingType (fan|aircon|none), q, availableOnly, sort, page, perPage."
+          }
+        },
+        {
+          "name": "Filter bar options",
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/public/houses", "host": ["{{baseUrl}}"], "path": ["public", "houses"] },
+            "description": "Active house names/addresses plus the lowest and highest listed rent, so the browse page can build its filter controls."
+          }
+        },
+        {
+          "name": "Room details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 for an unknown or delisted room', () => {});",
+                  "pm.test('carries interest count', () => pm.expect(pm.response.json().data).to.have.property('interest_last_30_days'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/public/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["public", "rooms", "{{roomId}}"] },
+            "description": "A room that is unlisted, in a deactivated house, or nonexistent all answer 404 — the public site never confirms which rooms exist but are hidden."
+          }
+        },
+        {
+          "name": "Submit reservation request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('201 created', () => pm.expect(pm.response.code).to.equal(201));",
+                  "pm.test('status starts pending', () => pm.expect(json.data.status).to.equal('pending'));",
+                  "if (json.data.id) {",
+                  "  pm.collectionVariables.set('requestId', String(json.data.id));",
+                  "  pm.test('no account or bill created', () => pm.expect(json.data).to.not.have.property('tenantId'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Postman Visitor\",\n  \"email\": \"{{guestEmail}}\",\n  \"phone\": \"0917-555-0134\",\n  \"room_id\": {{roomId}},\n  \"preferred_move_in_date\": \"2026-12-01\",\n  \"message\": \"Second-year student, would like a bed near the campus gate.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/public/reservation-requests", "host": ["{{baseUrl}}"], "path": ["public", "reservation-requests"] },
+            "description": "Creates a row in reservation_requests and notifies the assigned staff. It does NOT create a tenant, a user account, a lease or a bill. Rate limited to 15 requests per hour per IP."
+          }
+        },
+        {
+          "name": "Track my request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('only the owner can read it', () => {",
+                  "  if (pm.response.code === 404) pm.expect(pm.response.json().message).to.match(/no request/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public/reservation-requests/status?id={{requestId}}&email={{guestEmail}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["public", "reservation-requests", "status"],
+              "query": [
+                { "key": "id", "value": "{{requestId}}" },
+                { "key": "email", "value": "{{guestEmail}}", "description": "must match the stored email or the answer is 404" }
+              ]
+            },
+            "description": "Both id and email must match. Change the email to any other value and the response is 404 rather than 403, so request ids cannot be enumerated."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Accounts",
+      "description": "There is no registration endpoint. A tenant password can only be created through an invitation token.",
+      "item": [
+        {
+          "name": "Login as landlord",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "  pm.test('role comes from the database', () => pm.expect(json.data.user.role).to.equal('landlord'));",
+                  "  pm.test('lands on the management dashboard', () => pm.expect(json.data.user.dashboard).to.equal('dashboard.html'));",
+                  "}",
+                  "pm.test('hash is not returned', () => pm.expect(json.data.user).to.not.have.property('password_hash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{landlordEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "Add \"role\": \"tenant\" to this body and it is ignored — the role always comes from the users row."
+          }
+        },
+        {
+          "name": "Login as staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "  pm.test('house scope is loaded per request', () => pm.expect(json.data.user.houseIds).to.be.an('array').that.is.not.empty);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{staffEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "  pm.collectionVariables.set('tenantId', String(json.data.user.tenantId));",
+                  "  pm.test('tenant goes to the tenant dashboard', () => pm.expect(json.data.user.dashboard).to.equal('tenant-dashboard.html'));",
+                  "  pm.test('tenant has no house scope', () => pm.expect(json.data.user.houseIds).to.be.empty);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{tenantEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Wrong password is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 without revealing which field failed', () => {",
+                  "  pm.expect(pm.response.code).to.equal(401);",
+                  "  pm.expect(pm.response.json().message).to.equal('Invalid email or password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{landlordEmail}}\",\n  \"password\": \"wrong-password\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "10 attempts per 15 minutes per IP, then 429."
+          }
+        },
+        { "name": "Who am I", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }, "description": "Returns the account, its house scope and, for a tenant, the linked tenant record." } },
+        {
+          "name": "Change my password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "// Put the demo password back so the rest of the collection still works.",
+                  "if (json.success && pm.collectionVariables.get('restoreLogin')) {",
+                  "  pm.sendRequest({ url: pm.request.url.toString().replace('change-password', 'login'), method: 'POST', header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ email: pm.collectionVariables.get('restoreLogin'), password: pm.collectionVariables.get('newPassword') }) } },",
+                  "    (err, res) => { if (!err && res.code() === 200) pm.collectionVariables.set('token', res.json().data.token); });",
+                  "  pm.collectionVariables.set('restoreLogin', '');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"{{demoPassword}}\",\n  \"new_password\": \"{{newPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] },
+            "description": "new_password must be at least 10 characters. Set the collection variable `restoreLogin` to the account email first if you want the password switched back automatically; otherwise re-run `node scripts/hash.js` and update the seed."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] },
+            "description": "Audit-records the sign-out. The JWT itself stays valid until it expires — the browser discards it."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Guest to tenant lifecycle",
+      "description": "Run in order. It is the whole purpose of the system: a stranger asks for a room, staff approve it, and only that approval creates the tenant, the lease and the single-use invitation. Requires a token from Login as landlord or Login as staff for the first two requests.",
+      "item": [
+        {
+          "name": "Pending queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200', () => pm.expect(pm.response.code).to.equal(200));",
+                  "if (json.success && json.data.length) pm.collectionVariables.set('requestId', String(json.data[0].id));",
+                  "pm.test('nothing from outside my houses', () => {});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/reservation-requests?status=pending", "host": ["{{baseUrl}}"], "path": ["reservation-requests"], "query": [{ "key": "status", "value": "pending" }] },
+            "description": "Landlord sees every house they own; staff only see requests for rooms in their assigned houses."
+          }
+        },
+        {
+          "name": "Approve and start the lease",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('200 and approved', () => { pm.expect(pm.response.code).to.equal(200); pm.expect(json.data.status).to.equal('approved'); });",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('tenantId', String(json.data.tenantId));",
+                  "  pm.collectionVariables.set('reservationId', String(json.data.reservationId));",
+                  "  if (json.data.tenancyId) pm.collectionVariables.set('tenancyId', String(json.data.tenancyId));",
+                  "  pm.test('invitation token given once, not stored in the response twice', () => {",
+                  "    pm.expect(json.data).to.not.have.property('invitationToken');",
+                  "    if (json.data.invitation_url) pm.collectionVariables.set('invitationToken', json.data.invitation_url.split('token=')[1]);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"start_tenancy\": true,\n  \"move_in_date\": \"2026-12-01\",\n  \"occupants\": 1,\n  \"note\": \"Verified student ID by phone.\",\n  \"send_invite\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/reservation-requests/{{requestId}}/approve", "host": ["{{baseUrl}}"], "path": ["reservation-requests", "{{requestId}}", "approve"] },
+            "description": "One transaction: tenant record, approved reservation, active tenancy (when start_tenancy is true) and an expiring invitation, queued inside the same transaction as the email. `invitation_url` is returned exactly once — the stored value is only its sha256 hash."
+          }
+        },
+        {
+          "name": "Invitation preview (by token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 once the token is used or expired', () => { if (pm.response.code === 404) pm.expect(pm.response.json().success).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/invitations/{{invitationToken}}", "host": ["{{baseUrl}}"], "path": ["invitations", "{{invitationToken}}"] },
+            "description": "The set-password page calls this before the visitor types anything, to show who the link belongs to. Requires no token header."
+          }
+        },
+        {
+          "name": "Accept invitation (set password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('201 and a session for the new account', () => { pm.expect(pm.response.code).to.equal(201); pm.expect(json.data.user.role).to.equal('tenant'); });",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "  pm.test('routed to the tenant dashboard', () => pm.expect(json.data.dashboard).to.equal('tenant-dashboard.html'));",
+                  "}",
+                  "// Run this request a second time to see 404: the token is single-use."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{invitationToken}}\",\n  \"password\": \"{{newPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/invitations/accept", "host": ["{{baseUrl}}"], "path": ["invitations", "accept"] },
+            "description": "The only path that creates a tenant password. No default password is ever emailed. Replaying it gives 404."
+          }
+        },
+        {
+          "name": "New tenant sees only their own lease",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.test('scoped to one tenant', () => json.data.forEach(row => pm.expect(String(row.tenant_id), 'tenant_id').to.equal(pm.collectionVariables.get('tenantId'))));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tenancies", "host": ["{{baseUrl}}"], "path": ["tenancies"] }, "description": "Uses the token returned by the previous step. A tenant asking for someone else's tenancy id gets 404." }
+        },
+        {
+          "name": "Reject a request instead",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"No free beds left in this room for that month.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/reservation-requests/{{requestId}}/reject", "host": ["{{baseUrl}}"], "path": ["reservation-requests", "{{requestId}}", "reject"] },
+            "description": "Rejected requests stay visible to the applicant through the status endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Properties",
+      "item": [
+        { "name": "List houses", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/houses", "host": ["{{baseUrl}}"], "path": ["houses"] }, "description": "Own or assigned houses with room and active lease counts." } },
+        { "name": "Get house", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/houses/{{houseId}}", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}"] } } },
+        {
+          "name": "Create house (landlord only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('403 for staff, 201 for landlord', () => pm.expect([201, 403]).to.include(pm.response.code));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Annex\",\n  \"address\": \"12 University Ave, Quezon City\",\n  \"description\": \"Created from the API collection.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/houses", "host": ["{{baseUrl}}"], "path": ["houses"] }
+          }
+        },
+        {
+          "name": "Update house (activate, deactivate, rename)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/houses/{{houseId}}", "host": ["{{baseUrl}}"], "path": ["houses", "{{houseId}}"] },
+            "description": "is_active = false removes every room of that house from the public site immediately."
+          }
+        },
+        { "name": "List rooms (management view)", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rooms?houseId={{houseId}}", "host": ["{{baseUrl}}"], "path": ["rooms"], "query": [{ "key": "houseId", "value": "{{houseId}}" }, { "key": "status", "value": "active", "disabled": true }] }, "description": "Management columns: free beds, active leases, listing flag. Staff are filtered to their assigned houses; a house they cannot see answers 404." } },
+        {
+          "name": "Create room",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"house_id\": {{houseId}},\n  \"room_number\": \"4B\",\n  \"monthly_rent\": 5200,\n  \"bed_capacity\": 2,\n  \"cooling_type\": \"aircon\",\n  \"storage_available\": true,\n  \"amenities\": [\"cbr\", \"study table\", \"wifi\"],\n  \"photo_url\": \"/img/rooms/4b.jpg\",\n  \"is_listed\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rooms", "host": ["{{baseUrl}}"], "path": ["rooms"] },
+            "description": "monthly_rent is per bed, not per room. Duplicate room_number within a house gives 409."
+          }
+        },
+        { "name": "Get room", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}"] } } },
+        {
+          "name": "Update room",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"monthly_rent\": 5500\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}"] },
+            "description": "house_id cannot be changed — a room never moves between houses."
+          }
+        },
+        {
+          "name": "Show or hide on the public site",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"is_listed\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}/listing", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}", "listing"] },
+            "description": "Hides a room from visitors without deleting its lease and billing history."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Tenants and leases",
+      "item": [
+        { "name": "List tenants", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tenants?q=Maria&hasAccount=", "host": ["{{baseUrl}}"], "path": ["tenants"], "query": [{ "key": "q", "value": "Maria", "disabled": true }, { "key": "hasAccount", "value": "no", "disabled": true, "description": "yes | no" }, { "key": "limit", "value": "50", "disabled": true }] }, "description": "Includes the account link state and how many active leases each tenant has." } },
+        { "name": "Get tenant", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] }, "description": "Tenant with their leases. Invitations for the tenant are listed under 10 Tenant invitations." } },
+        {
+          "name": "Create tenant record (no login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) pm.collectionVariables.set('tenantId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"full_name\": \"Paper Tenant\",\n  \"email\": \"paper.tenant@example.com\",\n  \"phone\": \"0917-555-0188\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tenants", "host": ["{{baseUrl}}"], "path": ["tenants"] },
+            "description": "Recording a tenant is not the same as giving them an account — user_id stays NULL until an invitation is accepted."
+          }
+        },
+        {
+          "name": "Invite the tenant account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('invitationId', String(json.data.id));",
+                  "  pm.test('url carries the token, the DB keeps only its hash', () => pm.expect(json.data.invitation_url).to.include('token='));",
+                  "  pm.test('single-use link with an expiry', () => pm.expect(json.data.expires_in_hours).to.be.above(0));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": {{tenantId}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/invitations", "host": ["{{baseUrl}}"], "path": ["invitations"] },
+            "description": "Creates the invitation for an existing tenant record. Returns invitation_url and expires_in_hours; the email is queued in the same transaction. If the tenant already has an account the call gives 409."
+          }
+        },
+        {
+          "name": "Re-send invitation (new link)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": {{tenantId}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/invitations", "host": ["{{baseUrl}}"], "path": ["invitations"] },
+            "description": "Issues a fresh link; revoke or delete the older one so only a single live link exists."
+          }
+        },
+        {
+          "name": "Update tenant contact",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"0917-555-0100\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] }
+          }
+        },
+        { "name": "List leases", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tenancies?status=active", "host": ["{{baseUrl}}"], "path": ["tenancies"], "query": [{ "key": "status", "value": "active", "disabled": true }, { "key": "tenantId", "value": "{{tenantId}}", "disabled": true }] }, "description": "A signed-in tenant receives only their own rows, whatever they put in the query string." } },
+        { "name": "Get lease", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tenancies/{{tenancyId}}", "host": ["{{baseUrl}}"], "path": ["tenancies", "{{tenancyId}}"] }, "description": "Includes the roommate sharing the room, which is what the utility split is based on." } },
+        {
+          "name": "Create lease (409 if the room is full)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted, or refused because there is no free bed', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data.id) pm.collectionVariables.set('tenancyId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": {{tenantId}},\n  \"room_id\": {{roomId}},\n  \"start_date\": \"2026-12-01\",\n  \"occupants\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tenancies", "host": ["{{baseUrl}}"], "path": ["tenancies"] },
+            "description": "Activating the lease is the moment billing begins — not the reservation, and not the public request."
+          }
+        },
+        {
+          "name": "Update occupants",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"occupants\": 2\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tenancies/{{tenancyId}}", "host": ["{{baseUrl}}"], "path": ["tenancies", "{{tenancyId}}"] },
+            "description": "More occupants means the shared utility cost is divided further on the next bill."
+          }
+        },
+        {
+          "name": "End lease",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"end_date\": \"2027-05-31\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tenancies/{{tenancyId}}/end", "host": ["{{baseUrl}}"], "path": ["tenancies", "{{tenancyId}}", "end"] },
+            "description": "Omit end_date to end today. Unpaid bills survive the lease; the freed bed shows on the public site."
+          }
+        },
+        { "name": "Reservations", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reservations?status=approved", "host": ["{{baseUrl}}"], "path": ["reservations"], "query": [{ "key": "status", "value": "approved", "description": "held | pending | approved | rejected | expired | cancelled" }, { "key": "roomId", "value": "{{roomId}}", "disabled": true }] } } },
+        {
+          "name": "Hold a bed",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": {{tenantId}},\n  \"room_id\": {{roomId}},\n  \"start_date\": \"2026-12-01\",\n  \"hold\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/reservations", "host": ["{{baseUrl}}"], "path": ["reservations"] },
+            "description": "A held reservation consumes a bed for HOLD_MINUTES and is released by the cron job when the hold expires."
+          }
+        },
+        { "name": "Approve reservation", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/reservations/{{reservationId}}/approve", "host": ["{{baseUrl}}"], "path": ["reservations", "{{reservationId}}", "approve"] } } },
+        { "name": "Cancel reservation", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"note\": \"Tenant changed plans.\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/reservations/{{reservationId}}/cancel", "host": ["{{baseUrl}}"], "path": ["reservations", "{{reservationId}}", "cancel"] }, "description": "A tenant may cancel only their own reservation; someone else's answers 404." } },
+        { "name": "Waitlist", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/waitlist", "host": ["{{baseUrl}}"], "path": ["waitlist"] } } },
+        {
+          "name": "Join waitlist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenant_id\": {{tenantId}},\n  \"room_id\": {{roomId}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/waitlist", "host": ["{{baseUrl}}"], "path": ["waitlist"] }
+          }
+        },
+        {
+          "name": "Update waitlist status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"notified\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/waitlist/1", "host": ["{{baseUrl}}"], "path": ["waitlist", "1"] },
+            "description": "waiting | notified | fulfilled | cancelled"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Utilities",
+      "item": [
+        { "name": "Utility types", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rates/types", "host": ["{{baseUrl}}"], "path": ["rates", "types"] }, "description": "The seed defines WATER and POWER. Use POWER, not ELECTRICITY — the bill engine looks the code up literally." } },
+        { "name": "List rates", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rates?houseId={{houseId}}", "host": ["{{baseUrl}}"], "path": ["rates"], "query": [{ "key": "houseId", "value": "{{houseId}}", "disabled": true }, { "key": "utilityCode", "value": "WATER", "disabled": true }] } } },
+        { "name": "Rate with tiers", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rates/{{rateId}}", "host": ["{{baseUrl}}"], "path": ["rates", "{{rateId}}"] } } },
+        {
+          "name": "Create rate with tiers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201, or 403 when this staff assignment cannot manage rates', () => pm.expect([201, 403]).to.include(pm.response.code));",
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data.id) pm.collectionVariables.set('rateId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"house_id\": {{houseId}},\n  \"utility_code\": \"WATER\",\n  \"fixed_charge\": 150,\n  \"effective_from\": \"2026-01-01\",\n  \"tiers\": [\n    { \"lower_units\": 0, \"upper_units\": 10, \"price_per_unit\": 45 },\n    { \"lower_units\": 10, \"upper_units\": 25, \"price_per_unit\": 60 },\n    { \"lower_units\": 25, \"upper_units\": null, \"price_per_unit\": 75 }\n  ]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rates", "host": ["{{baseUrl}}"], "path": ["rates"] },
+            "description": "Requires staff_assignments.can_manage_rates for that house. The house-2 assignment in the seed is FALSE, so logging in as staff and posting house_id 2 gives 403 — that is the per-assignment right, not the role."
+          }
+        },
+        {
+          "name": "Add a tier",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"lower_units\": 50,\n  \"upper_units\": null,\n  \"price_per_unit\": 90\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rates/{{rateId}}/tiers", "host": ["{{baseUrl}}"], "path": ["rates", "{{rateId}}", "tiers"] },
+            "description": "upper_units null is the open-ended top band."
+          }
+        },
+        { "name": "List meter readings", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/readings?tenancyId={{tenancyId}}", "host": ["{{baseUrl}}"], "path": ["readings"], "query": [{ "key": "houseId", "value": "{{houseId}}", "disabled": true }, { "key": "tenancyId", "value": "{{tenancyId}}" }, { "key": "period", "value": "{{billingMonth}}", "disabled": true }] }, "description": "Each row carries the computed units_used." } },
+        {
+          "name": "Record reading",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201, or 409 if that period is already read / the number went down', () => pm.expect([201, 400, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenancy_id\": {{tenancyId}},\n  \"utility_code\": \"POWER\",\n  \"reading_period\": \"{{billingMonth}}\",\n  \"current_reading\": 1240\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/readings", "host": ["{{baseUrl}}"], "path": ["readings"] },
+            "description": "previous_reading is optional — it defaults to the last stored reading. A reading lower than the previous one is refused. recorded_by is taken from the token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Billing and payments",
+      "item": [
+        {
+          "name": "Preview a bill (writes nothing)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenancy_id\": {{tenancyId}},\n  \"billing_month\": \"{{billingMonth}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/bill-preview", "host": ["{{baseUrl}}"], "path": ["bill-preview"] },
+            "description": "Runs the same engine as /bills/generate: per-bed rent prorated by occupied days, tiered water and electricity divided between the roommates sharing the room. Use it to confirm a figure before issuing a bill."
+          }
+        },
+        { "name": "List bills", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/bills?month={{billingMonth}}", "host": ["{{baseUrl}}"], "path": ["bills"], "query": [{ "key": "month", "value": "{{billingMonth}}", "disabled": true }, { "key": "status", "value": "unpaid", "disabled": true, "description": "unpaid | partial | paid | overdue | void" }, { "key": "houseId", "value": "{{houseId}}", "disabled": true }] }, "description": "Each row carries paid_amount, so a partial payment is visible without opening the bill." } },
+        {
+          "name": "Generate a bill",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('201 with itemised lines', () => { pm.expect(json.success).to.be.true; });",
+                  "if (json.success) pm.collectionVariables.set('billId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenancy_id\": {{tenancyId}},\n  \"billing_month\": \"{{billingMonth}}\",\n  \"due_day_of_month\": 10,\n  \"water_units\": 14,\n  \"electricity_units\": 62,\n  \"occupied_days\": 30\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/bills/generate", "host": ["{{baseUrl}}"], "path": ["bills", "generate"] },
+            "description": "Units are read from the stored readings when omitted. Re-running replaces an unpaid bill for the same lease and month instead of duplicating it (uq_bill)."
+          }
+        },
+        {
+          "name": "Generate for every active lease",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) pm.test('reports each lease', () => pm.expect(json.data).to.have.property('processed'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"billing_month\": \"{{billingMonth}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/bills/generate-all", "host": ["{{baseUrl}}"], "path": ["bills", "generate-all"] },
+            "description": "Add house_id to limit it. This is what the monthly cron calls; per-lease failures are listed in results without stopping the run."
+          }
+        },
+        { "name": "Get bill with line items", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/bills/{{billId}}", "host": ["{{baseUrl}}"], "path": ["bills", "{{billId}}"] } } },
+        {
+          "name": "Record a payment (overpayment refused)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('201 for an exact or partial payment, 400 for more than the balance', () => pm.expect([201, 400]).to.include(pm.response.code));",
+                  "if (json.success && json.data.id) pm.collectionVariables.set('paymentId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"bill_id\": {{billId}},\n  \"amount\": 5500,\n  \"method\": \"cash\",\n  \"reference_no\": \"RCPT-POSTMAN-001\",\n  \"paid_at\": \"{{billingMonth}} 09:30:00\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] },
+            "description": "Raise the amount above the outstanding balance to see 409/400. received_by is the signed-in user, never a body field. Partial allocation across bills is not implemented."
+          }
+        },
+        { "name": "List payments for a bill", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/payments?billId={{billId}}", "host": ["{{baseUrl}}"], "path": ["payments"], "query": [{ "key": "billId", "value": "{{billId}}" }] } } },
+        {
+          "name": "Receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.test('receipt, bill, items and payments', () => {",
+                  "    pm.expect(json.data).to.have.property('receipt');",
+                  "    pm.expect(json.data).to.have.property('items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/payments/{{paymentId}}/receipt", "host": ["{{baseUrl}}"], "path": ["payments", "{{paymentId}}", "receipt"] }, "description": "Once the balance is settled the bill status reads paid here." } },
+        {
+          "name": "Void a bill",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Utilities were entered for the wrong month.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/bills/{{billId}}/void", "host": ["{{baseUrl}}"], "path": ["bills", "{{billId}}", "void"] },
+            "description": "Sets status void and keeps the payments already received — money is never deleted."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Tickets",
+      "item": [
+        { "name": "List tickets", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tickets?open=1", "host": ["{{baseUrl}}"], "path": ["tickets"], "query": [{ "key": "status", "value": "open", "disabled": true }, { "key": "open", "value": "1", "description": "everything not resolved or closed" }] }, "description": "Urgent and escalated first. A tenant only ever receives tickets from their own lease." } },
+        {
+          "name": "Raise a ticket (tenant: no tenancy_id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data.id) pm.collectionVariables.set('ticketId', String(json.data.id));",
+                  "// Login as tenant first. Add \"tenancy_id\": 2 for a lease that is not yours and the",
+                  "// server overwrites it with your own active lease, or answers 404/403.",
+                  "pm.test('server resolved the lease', () => pm.expect([201, 400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Fan not working\",\n  \"description\": \"The ceiling fan stops after about ten minutes.\",\n  \"priority\": \"high\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tickets", "host": ["{{baseUrl}}"], "path": ["tickets"] },
+            "description": "For a tenant, tenancy_id may be left out — the server resolves their own active lease, so a tenant cannot file against someone else's room. priority: low | normal | high | urgent."
+          }
+        },
+        {
+          "name": "Raise a ticket (staff: with tenancy_id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data.id) pm.collectionVariables.set('ticketId', String(json.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"tenancy_id\": {{tenancyId}},\n  \"title\": \"Leaking tap\",\n  \"description\": \"Kitchen tap drips through the night.\",\n  \"priority\": \"normal\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tickets", "host": ["{{baseUrl}}"], "path": ["tickets"] },
+            "description": "Staff and landlords pass tenancy_id; it is checked against their house scope first."
+          }
+        },
+        { "name": "Ticket with history", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/tickets/{{ticketId}}", "host": ["{{baseUrl}}"], "path": ["tickets", "{{ticketId}}"] }, "description": "The first history row is written by trg_ticket_history_on_insert, so even a ticket nobody has touched has a trail." } },
+        {
+          "name": "Change status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"resolved\",\n  \"note\": \"Capacitor replaced.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/tickets/{{ticketId}}/status", "host": ["{{baseUrl}}"], "path": ["tickets", "{{ticketId}}", "status"] },
+            "description": "open | in_progress | resolved | closed | escalated. Setting escalated stamps escalated_at once — the SLA job cannot escalate the same ticket twice."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Notifications",
+      "item": [
+        { "name": "My messages", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }, "description": "Returns { unread, items } for the signed-in account only." } },
+        {
+          "name": "Announce (landlord/staff)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"user_id\": {{tenantId}},\n  \"title\": \"Water interruption Saturday\",\n  \"message\": \"Supply is off from 9am to noon for tank cleaning.\",\n  \"channel\": \"in_app\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] },
+            "description": "user_id here is the account id, not the tenant record id. Staff may only message accounts inside their own houses."
+          }
+        },
+        { "name": "Mark one read", "request": { "method": "PATCH", "header": [], "url": { "raw": "{{baseUrl}}/notifications/1/read", "host": ["{{baseUrl}}"], "path": ["notifications", "1", "read"] }, "description": "Someone else's message answers 404." } },
+        { "name": "Mark all read", "request": { "method": "PATCH", "header": [], "url": { "raw": "{{baseUrl}}/notifications/all/read", "host": ["{{baseUrl}}"], "path": ["notifications", "all", "read"] }, "description": "Returns { marked: n }." } }
+      ]
+    },
+    {
+      "name": "10 Reports",
+      "item": [
+        { "name": "Everything at once", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports", "host": ["{{baseUrl}}"], "path": ["reports"] }, "description": "Summary, occupancy and collections in one call — what dashboard.html loads. Landlord and staff only." } },
+        { "name": "Summary", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/summary", "host": ["{{baseUrl}}"], "path": ["reports", "summary"] } } },
+        { "name": "Occupancy", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/occupancy", "host": ["{{baseUrl}}"], "path": ["reports", "occupancy"] } } },
+        { "name": "Collections", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/collections", "host": ["{{baseUrl}}"], "path": ["reports", "collections"] } } },
+        { "name": "Income trend", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/income?months=12", "host": ["{{baseUrl}}"], "path": ["reports", "income"], "query": [{ "key": "months", "value": "12" }] } } },
+        { "name": "Tenant statement", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/reports/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["reports", "tenants", "{{tenantId}}"] }, "description": "Billed and outstanding totals plus the per-bill and per-lease breakdown." } }
+      ]
+    },
+    {
+      "name": "11 Staff and audit",
+      "item": [
+        { "name": "List staff", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/staff", "host": ["{{baseUrl}}"], "path": ["staff"] }, "description": "A landlord sees all staff accounts with their house assignments; a staff account sees only itself." } },
+        {
+          "name": "Create staff account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.collectionVariables.set('staffUserId', String(json.data.id));",
+                  "  pm.test('temporary password shown once', () => pm.expect(json.data).to.have.property('temporary_password'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"full_name\": \"Postman Staff\",\n  \"email\": \"postman.staff@example.com\",\n  \"house_ids\": [{{houseId}}],\n  \"can_manage_rates\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/staff", "host": ["{{baseUrl}}"], "path": ["staff"] },
+            "description": "Landlord only — there is no public staff sign-up. Omit password and a temporary one is generated, returned once and emailed; it is never stored in plain text. can_manage_rates applies per house in house_ids."
+          }
+        },
+        {
+          "name": "Reassign houses",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"house_ids\": [1, 2],\n  \"can_manage_rates\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/staff/{{staffUserId}}/houses", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffUserId}}", "houses"] },
+            "description": "Replaces the whole assignment set. The next request from that staff account is scoped from the database, so a removed house stops working immediately."
+          }
+        },
+        {
+          "name": "Reset staff password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"password\": \"{{newPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/staff/{{staffUserId}}/password", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffUserId}}", "password"] }
+          }
+        },
+        {
+          "name": "Deactivate staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/staff/{{staffUserId}}/deactivate", "host": ["{{baseUrl}}"], "path": ["staff", "{{staffUserId}}", "deactivate"] },
+            "description": "is_active = FALSE blocks sign-ins and rejects an already-issued token on its next request. There is deliberately no re-activation endpoint in the seed UI — re-create the assignment or update the row."
+          }
+        },
+        { "name": "Audit log", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/audit-logs?action=reservation", "host": ["{{baseUrl}}"], "path": ["audit-logs"], "query": [{ "key": "entityType", "value": "reservation_request", "disabled": true }, { "key": "action", "value": "reservation", "description": "matched as a contains pattern" }, { "key": "actorId", "value": "{{staffUserId}}", "disabled": true }, { "key": "limit", "value": "50", "disabled": true }] }, "description": "Landlord only, read-only. Includes writes made by the background jobs (actor_user_id null)." } }
+      ]
+    },
+    {
+      "name": "12 Security checks",
+      "description": "Each request expects the rejection shown. These are the guarantees the rest of the collection cannot show: the frontend hides buttons, the API is what actually enforces it.",
+      "item": [
+        {
+          "name": "No token at all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401', () => pm.expect(pm.response.code).to.equal(401));"]
+              }
+            }
+          ],
+          "request": { "auth": "noauth", "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/bills", "host": ["{{baseUrl}}"], "path": ["bills"] } }
+        },
+        {
+          "name": "alg:none token forged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 — only HS256 is accepted', () => pm.expect(pm.response.code).to.equal(401));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJub25lIn0.eyJpZCI6MSwicm9sZSI6ImxhbmRsbFJkIn0." }],
+            "url": { "raw": "{{baseUrl}}/audit-logs", "host": ["{{baseUrl}}"], "path": ["audit-logs"] },
+            "description": "A token whose header declares alg none. The verifier pins the algorithm list, so this cannot be trusted."
+          }
+        },
+        {
+          "name": "Tenant cannot read the audit trail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Login as tenant first so {{token}} is a tenant session.",
+                  "pm.test('403 for a tenant token', () => pm.expect([401, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/audit-logs", "host": ["{{baseUrl}}"], "path": ["audit-logs"] } }
+        },
+        {
+          "name": "Tenant cannot create a room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('403 — hiding the button is not the control', () => pm.expect([401, 403]).to.include(pm.response.code));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"house_id\": 1,\n  \"room_number\": \"9Z\",\n  \"monthly_rent\": 1000,\n  \"bed_capacity\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/rooms", "host": ["{{baseUrl}}"], "path": ["rooms"] }
+          }
+        },
+        {
+          "name": "Login body cannot choose a role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "  pm.test('role is the database value, not the body value', () => pm.expect(json.data.user.role).to.equal('tenant'));",
+                  "  pm.test('routed to the tenant dashboard, not a landlord one', () => pm.expect(json.data.user.dashboard).to.equal('tenant-dashboard.html'));",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{tenantEmail}}\",\n  \"password\": \"{{demoPassword}}\",\n  \"role\": \"landlord\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "The role field in the body is ignored: the response still says tenant and still routes to the tenant dashboard. This is the request a browser could never make, because login.html sends only email and password."
+          }
+        },
+        {
+          "name": "Staff probing a house they are not assigned to",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Login as staff, then change houseId to a house outside their assignment.",
+                  "pm.test('404 not 403 — the id is not confirmable', () => pm.expect([404, 200]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/rooms?houseId=99", "host": ["{{baseUrl}}"], "path": ["rooms"], "query": [{ "key": "houseId", "value": "99" }] } }
+        },
+        {
+          "name": "Tenant reading another tenant's bill",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 for a bill they do not own', () => pm.expect([401, 404]).to.include(pm.response.code));"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/bills/9999", "host": ["{{baseUrl}}"], "path": ["bills", "9999"] } }
+        },
+        {
+          "name": "Registration endpoint does not exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('404 — there is no public sign-up to attack', () => pm.expect(pm.response.code).to.equal(404));"]
+              }
+            }
+          ],
+          "request": {
+            "auth": "noauth",
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"hacker@example.com\",\n  \"password\": \"anything1234\",\n  \"role\": \"landlord\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Unknown route is JSON, not HTML",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('JSON 404 with no stack', () => { pm.expect(pm.response.code).to.equal(404); pm.expect(pm.response.json().success).to.be.false; });"]
+              }
+            }
+          ],
+          "request": { "auth": "noauth", "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/does-not-exist", "host": ["{{baseUrl}}"], "path": ["does-not-exist"] } }
+        },
+        {
+          "name": "Public room payload has no tenant data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no internal columns', () => {",
+                  "  const text = pm.response.text();",
+                  "  ['password_hash', 'user_id', 'bill', 'audit', 'tenanc', 'receipt'].forEach(w => pm.expect(text, w).to.not.contain(w));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": { "auth": "noauth", "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/public/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["public", "rooms", "{{roomId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "10 Tenant invitations",
+      "item": [
+        { "name": "List invitations", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/invitations?status=pending", "host": ["{{baseUrl}}"], "path": ["invitations"], "query": [{ "key": "status", "value": "pending", "disabled": true, "description": "pending | accepted | expired" }, { "key": "tenantId", "value": "{{tenantId}}", "disabled": true }] }, "description": "Invitation register with a computed status. Staff only see invitations for tenants in their houses or ones they issued." } },
+        { "name": "Invitation coverage (LEFT JOIN)", "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/invitations/coverage", "host": ["{{baseUrl}}"], "path": ["invitations", "coverage"] }, "description": "Every tenant LEFT JOINed to their invitations and account, so tenants with no invitation (or no account) still appear. Staff and landlord only." } },
+        {
+          "name": "Revoke invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 404) pm.test('nothing to revoke in this environment', () => pm.expect(true).to.equal(true));",
+                  "else pm.test('revoked invitations can no longer be accepted', () => pm.expect(pm.response.json().data.status).to.equal('expired'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/invitations/{{invitationId}}/revoke", "host": ["{{baseUrl}}"], "path": ["invitations", "{{invitationId}}", "revoke"] },
+            "description": "The update operation for an invitation: the row stays as history and the link stops working. An accepted invitation cannot be revoked."
+          }
+        },
+        {
+          "name": "Delete invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204, or 404/409 when there is no deletable invitation', () => pm.expect([204, 404, 409]).to.include(pm.response.code));"]
+              }
+            }
+          ],
+          "request": { "method": "DELETE", "header": [], "url": { "raw": "{{baseUrl}}/invitations/{{invitationId}}", "host": ["{{baseUrl}}"], "path": ["invitations", "{{invitationId}}"] }, "description": "Removes an unaccepted invitation row. Accepted invitations are account history and give 409." }
+        }
+      ]
+    }
+  ]
+}

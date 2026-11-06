@@ -1,0 +1,1 @@
+Models are the SQL/data-access layer. Keep SQL and business rules here; controllers should handle HTTP concerns only.

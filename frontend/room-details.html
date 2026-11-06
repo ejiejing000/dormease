@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room details &amp; reservation request | DORMEASE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/nav.js"></script>
+  <script defer src="js/public.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <p><a href="browse-rooms.html">&larr; Back to all rooms</a></p>
+    <div id="room-detail"><p class="muted">Loading room…</p></div>
+
+    <section class="card">
+      <h2>Request this room</h2>
+      <p class="muted" id="request-room-note">Fill in your details and a staff member or landlord will review the request.</p>
+      <form id="request-form">
+        <input type="hidden" name="room_id" value="">
+        <div class="grid">
+          <div>
+            <label>Full name<input name="full_name" required maxlength="150"></label>
+            <label>Email<input name="email" type="email" required></label>
+          </div>
+          <div>
+            <label>Contact number<input name="phone" required placeholder="09xx xxx xxxx"></label>
+            <label>Preferred move-in date<input name="preferred_move_in_date" type="date" required></label>
+          </div>
+        </div>
+        <label>Anything the landlord should know<textarea name="message" rows="3" maxlength="2000" placeholder="Year level, preferred roommate, questions…"></textarea></label>
+        <button type="submit">Send reservation request</button>
+      </form>
+      <p id="message" class="muted"></p>
+      <div id="request-result"></div>
+      <p class="notice">Submitting this form does not reserve the room and does not create a tenant account or a bill. Billing starts only after staff approve the request and register the tenancy.</p>
+    </section>
+  </main>
+
+  <footer>DORMEASE — requests are reviewed by authorised landlord or staff accounts.</footer>
+</body>
+</html>

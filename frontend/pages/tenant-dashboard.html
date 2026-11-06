@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Dashboard | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+  <h1 id="greeting">My dashboard</h1>
+  <p class="muted" id="message"></p>
+
+  <section class="card" id="lease-card">
+    <h2>Current room</h2>
+    <p class="muted">Loading...</p>
+  </section>
+
+  <div class="grid" id="totals"></div>
+
+  <section class="card">
+    <h2>Bills awaiting payment</h2>
+    <div class="table-wrap"><table id="bills"><thead><tr>
+      <th>Month</th><th>Rent</th><th>Water</th><th>Electricity</th><th>Late fee</th><th>Total</th><th>Paid</th><th>Due date</th><th>Status</th>
+    </tr></thead><tbody></tbody></table></div>
+    <p><a class="button-link" href="bills.html">All my bills</a> <a class="button-link ghost" href="payments.html">My receipts</a></p>
+  </section>
+
+  <section class="card">
+    <h2>My maintenance requests</h2>
+    <div class="table-wrap"><table id="tickets"><thead><tr>
+      <th>#</th><th>Issue</th><th>Priority</th><th>Status</th><th>Reported</th>
+    </tr></thead><tbody></tbody></table></div>
+    <p><a class="button-link" href="tickets.html">Report a problem</a></p>
+  </section>
+
+  <section class="card">
+    <h2>Messages</h2>
+    <ul id="notes"></ul>
+    <p><a class="button-link ghost" href="notifications.html">Open messages</a></p>
+  </section>
+
+  <p class="notice">You reached this page because the server identified your account as a tenant — the login form never asks you to pick a role. Your lease, bills and tickets are filtered to you on the server, so another tenant's records cannot be read by editing the URL.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = requireRole('tenant');
+  if (!user) return;
+  document.querySelector('#greeting').textContent = `Welcome back, ${user.full_name}`;
+
+  const fill = (id, list, render, colspan) => {
+    document.querySelector(`#${id} tbody`).innerHTML = list.length
+      ? list.map(render).join('')
+      : `<tr><td colspan="${colspan}" class="muted">Nothing here yet.</td></tr>`;
+  };
+
+  try {
+    const [tenancies, bills, tickets, messages] = await Promise.all([
+      api('/tenancies'),
+      api('/bills'),
+      api('/tickets'),
+      api('/notifications')
+    ]);
+
+    const active = tenancies.find(t => t.status === 'active');
+    document.querySelector('#lease-card').innerHTML = active ? `<h2>Current room</h2>
+      <dl class="detail">
+        <dt>House</dt><dd>${escapeHtml(active.house_name)}</dd>
+        <dt>Room</dt><dd>${escapeHtml(active.room_number)}</dd>
+        <dt>Since</dt><dd>${formatDate(active.start_date)}</dd>
+        <dt>Rent per bed</dt><dd>${formatMoney(active.monthly_rent)} / month</dd>
+        <dt>Occupants on your bed</dt><dd>${active.occupants}</dd>
+      </dl>
+      <p><a class="button-link ghost" href="lease.html">Lease details</a></p>`
+      : '<h2>Current room</h2><p class="muted">No active lease is linked to this account yet. Ask your landlord or staff to confirm your move-in.</p>';
+
+    const payable = bills.filter(b => ['unpaid', 'partial', 'overdue'].includes(b.status));
+    const outstanding = payable.reduce((sum, b) => sum + Number(b.total_amount) - Number(b.paid_amount), 0);
+    document.querySelector('#totals').innerHTML = [
+      ['Unpaid bills', payable.length],
+      ['Total outstanding', formatMoney(outstanding)],
+      ['Open tickets', tickets.filter(t => !['resolved', 'closed'].includes(t.status)).length],
+      ['Unread messages', messages.unread]
+    ].map(([label, value]) => `<div class="stat"><b>${escapeHtml(value)}</b>${escapeHtml(label)}</div>`).join('');
+
+    fill('bills', payable, b => `<tr>
+      <td>${formatDate(b.billing_month)}</td><td>${formatMoney(b.rent_amount)}</td>
+      <td>${formatMoney(b.water_amount)}</td><td>${formatMoney(b.electricity_amount)}</td>
+      <td>${formatMoney(b.late_fee)}</td><td>${formatMoney(b.total_amount)}</td>
+      <td>${formatMoney(b.paid_amount)}</td><td>${formatDate(b.due_date)}</td>
+      <td><span class="badge ${escapeHtml(b.status)}">${escapeHtml(b.status)}</span></td></tr>`, 9);
+
+    fill('tickets', tickets.slice(0, 8), t => `<tr>
+      <td>${t.id}</td><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.priority)}</td>
+      <td><span class="badge ${escapeHtml(t.status)}">${escapeHtml(t.status)}</span></td>
+      <td>${formatDate(t.created_at)}</td></tr>`, 5);
+
+    document.querySelector('#notes').innerHTML = messages.items.slice(0, 5).map(n =>
+      `<li>${formatDate(n.created_at)} — <strong>${escapeHtml(n.title)}</strong>: ${escapeHtml(n.message)}</li>`).join('')
+      || '<li class="muted">No messages yet.</li>';
+
+    showMessage('');
+  } catch (error) {
+    showMessage(error.message, true);
+  }
+});
+</script>
+</body>
+</html>
