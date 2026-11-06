@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+  <h1>Management dashboard</h1>
+  <p class="muted" id="message"></p>
+
+  <div class="grid" id="stats"></div>
+
+  <section class="card">
+    <h2>Reservation requests waiting for review</h2>
+    <div class="table-wrap"><table id="requests"><thead><tr>
+      <th>#</th><th>Applicant</th><th>Room</th><th>Preferred move-in</th><th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Occupancy by house</h2>
+    <div class="table-wrap"><table id="occupancy"><thead><tr>
+      <th>House</th><th>Rooms</th><th>Beds</th><th>Occupied</th><th>Free</th><th>Rate</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Open maintenance tickets</h2>
+    <div class="table-wrap"><table id="tickets"><thead><tr>
+      <th>#</th><th>Title</th><th>Tenant</th><th>Room</th><th>Priority</th><th>Status</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <p class="muted">All figures are limited to the houses your account is authorised for. Money comes from the bills and payments tables, not from sample data.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireRole('landlord', 'staff')) return;
+  const fill = (id, rows, render) => {
+    const body = document.querySelector(`#${id} tbody`);
+    body.innerHTML = rows.length ? rows.map(render).join('')
+      : `<tr><td colspan="6" class="muted">Nothing to show right now.</td></tr>`;
+  };
+  try {
+    const summary = await api('/reports/summary');
+    document.querySelector('#stats').innerHTML = [
+      ['Active leases', summary.active_tenancies],
+      ['Pending requests', summary.pending_requests],
+      ['Open tickets', summary.open_tickets],
+      ['Outstanding billing', formatMoney(summary.outstanding)]
+    ].map(([label, value]) => `<div class="stat"><b>${escapeHtml(value)}</b>${escapeHtml(label)}</div>`).join('');
+
+    const requests = await api('/reservation-requests?status=pending');
+    fill('requests', requests, r => `<tr>
+      <td>${r.id}</td><td>${escapeHtml(r.full_name)}</td>
+      <td>${escapeHtml(r.house_name)} · ${escapeHtml(r.room_number)}</td>
+      <td>${formatDate(r.preferred_move_in_date)}</td>
+      <td class="row-actions"><a href="reservation-requests.html?status=pending">Review</a></td></tr>`);
+
+    const occupancy = await api('/reports/occupancy');
+    fill('occupancy', occupancy, o => `<tr>
+      <td>${escapeHtml(o.name)}</td><td>${o.rooms}</td><td>${o.beds}</td>
+      <td>${o.occupied_beds}</td><td>${o.free_beds}</td><td>${o.occupancy_rate}%</td></tr>`);
+
+    const tickets = await api('/tickets?open=1&limit=10');
+    fill('tickets', tickets, t => `<tr>
+      <td>${t.id}</td><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.tenant_name || '-')}</td>
+      <td>${escapeHtml(t.room_number || '-')}</td><td>${escapeHtml(t.priority)}</td>
+      <td><span class="badge ${escapeHtml(t.status)}">${escapeHtml(t.status)}</span></td></tr>`);
+    showMessage('');
+  } catch (error) {
+    showMessage(error.message, true);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page name | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+  <section id="panel" class="card hidden"></section>
+  <section id="page" class="card"></section>
+</main>
+<script>
+// Copy this file, rename it, and describe the page instead of writing per-page fetch code.
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Page name',
+  roles: ['landlord', 'staff'],
+  endpoint: '/plural-resource',
+  filters: [{ name: 'status', label: 'Status' }],
+  fields: null,
+  columns: [{ key: 'id', label: '#' }],
+  rowActions: []
+}));
+</script>
+</body>
+</html>
