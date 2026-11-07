@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leases | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<section class="card">
+  <h2>Lease register — INNER JOIN</h2>
+  <p class="muted">Every lease joined to its tenant, room and house. Only complete matches can appear; the monthly value is rent per bed times occupants.</p>
+  <div class="table-wrap"><table id="register"><thead><tr>
+    <th>House</th><th>Room</th><th>Tenant</th><th>Start</th><th>End</th><th>Status</th><th>Occupants</th><th>Monthly value</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+<p class="notice">Billing starts here, not at the reservation request. A bill can only be generated for a tenancy that exists, and the engine prorates the first month and splits shared utilities between the roommates of that room.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = getUser();
+  const tenant = user?.role === 'tenant';
+  const page = await initPage({
+    title: tenant ? 'My room and lease' : 'Leases',
+    roles: ['landlord', 'staff', 'tenant'],
+    endpoint: '/tenancies',
+    createLabel: 'Start a lease',
+    filters: tenant ? [] : [
+      { name: 'status', label: 'Status', type: 'select', options: [['', 'All'], ['active', 'Active'], ['ended', 'Ended']] },
+      { name: 'tenantId', label: 'Tenant id', type: 'number' }
+    ],
+    fields: tenant ? null : [
+      { name: 'tenant_id', label: 'Tenant id', type: 'number', required: true },
+      { name: 'room_id', label: 'Room id', type: 'number', required: true },
+      { name: 'start_date', label: 'Start date', type: 'date', required: true },
+      { name: 'occupants', label: 'Occupants on this bed', type: 'number' }
+    ],
+    columns: [
+      { key: 'id', label: '#' },
+      ...(tenant ? [] : [{ key: 'tenant_name', label: 'Tenant' }]),
+      { key: 'house_name', label: 'House' },
+      { key: 'room_number', label: 'Room' },
+      { key: 'start_date', label: 'Start', format: 'date' },
+      { key: 'end_date', label: 'End', render: (r) => r.end_date ? formatDate(r.end_date) : 'ongoing' },
+      { key: 'occupants', label: 'Occupants' },
+      { key: 'monthly_rent', label: 'Rent / bed', format: 'money' },
+      { key: 'status', label: 'Status', format: 'badge' },
+      { key: 'bill_count', label: 'Bills' }
+    ],
+    rowActions: tenant ? [] : [
+      {
+        label: (r) => r.status === 'active' ? 'End lease' : 'Ended',
+        path: (id) => `/tenancies/${id}/end`,
+        reload: false,
+        fields: [{ name: 'end_date', label: 'Last day of the lease YYYY-MM-DD (blank = today)' }],
+        done: (data) => `Lease #${data.id} ended${data.end_date ? ` on ${data.end_date}` : ''}.`
+      },
+      {
+        label: () => 'Change occupants',
+        path: (id) => `/tenancies/${id}`,
+        method: 'PATCH',
+        fields: [{ name: 'occupants', label: 'Occupants on this bed', type: 'number', required: true }]
+      }
+    ]
+  });
+  if (!page) return;
+
+  try {
+    const leases = await api('/tenancies/register');
+    document.querySelector('#register tbody').innerHTML = leases.length
+      ? leases.map(l => `<tr><td>${escapeHtml(l.house_name)}</td><td>${escapeHtml(l.room_number)}</td>
+          <td>${escapeHtml(l.tenant_name)}</td><td>${formatDate(l.start_date)}</td>
+          <td>${l.end_date ? formatDate(l.end_date) : '-'}</td>
+          <td><span class="badge ${escapeHtml(l.status)}">${escapeHtml(l.status)}</span></td>
+          <td>${l.occupants}</td><td>${formatMoney(l.monthly_value)}</td></tr>`).join('')
+      : '<tr><td colspan="8" class="muted">No leases in scope.</td></tr>';
+  } catch (error) {
+    document.querySelector('#register tbody').innerHTML = `<tr><td colspan="8" class="error">${escapeHtml(error.message)}</td></tr>`;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tenants | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+<button id="invite-new" type="button">Register tenant and send invitation</button>
+<section id="page" class="card"></section>
+<p class="notice">There is no public sign-up for tenants, staff or landlords. An official tenant record is created here (or by approving a reservation request), and the invitation link lets that person set their own password. The token is single-use, expires, and is stored only as a hash — never a default password.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Official tenants',
+  roles: ['landlord', 'staff'],
+  endpoint: '/tenants',
+  createLabel: 'Register a tenant record (no login yet)',
+  filters: [
+    { name: 'q', label: 'Name or email contains' },
+    { name: 'hasAccount', label: 'Account', type: 'select', options: [['', 'Any'], ['yes', 'Has login'], ['no', 'No login yet']] }
+  ],
+  fields: [
+    { name: 'full_name', label: 'Full name', required: true },
+    { name: 'email', label: 'Email', type: 'email' },
+    { name: 'phone', label: 'Contact number' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'full_name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Contact' },
+    { key: 'active_tenancies', label: 'Active leases' },
+    { key: 'account_role', label: 'Account', render: (r) => r.account_role ? `<span class="badge active">${escapeHtml(r.account_role)}</span>` : '<span class="badge">no login</span>' }
+  ],
+  rowActions: [
+    {
+      label: () => 'Invite to set password',
+      path: (id) => '/invitations',
+      method: 'POST',
+      body: (row) => ({ tenant_id: row.id }),
+      confirm: 'Send a fresh one-time invitation link? Any previous link stops working.',
+      done: (data) => `Invitation link (shown once): ${data.invitation_url}`
+    },
+    {
+      label: () => 'Delete record',
+      path: (id) => `/tenants/${id}`,
+      method: 'DELETE',
+      confirm: (r) => `Delete ${r.full_name}? Only possible when the tenant has no leases, reservations, waitlist rows or login account.`,
+      done: () => 'Tenant record deleted.'
+    }
+  ]
+}));
+
+// "Register with invitation" needs an email, so it is offered separately from the plain record form.
+document.addEventListener('click', async (event) => {
+  if (event.target.id !== 'invite-new') return;
+  const fullName = prompt('Tenant full name');
+  if (!fullName) return;
+  const email = prompt('Tenant email (invitation is sent here)');
+  if (!email) return;
+  const phone = prompt('Contact number (optional)') || '';
+  try {
+    const tenant = await api('/tenants', { method: 'POST', body: JSON.stringify({ full_name: fullName, email, phone }) });
+    const result = await api('/invitations', { method: 'POST', body: JSON.stringify({ tenant_id: tenant.id }) });
+    alert(`Tenant #${tenant.id} created. Invitation link, shown once:\n${result.invitation_url}\n\nValid for ${result.expires_in_hours} hours.`);
+    location.reload();
+  } catch (error) { alert(error.message); }
+});
+</script>
+</body>
+</html>
