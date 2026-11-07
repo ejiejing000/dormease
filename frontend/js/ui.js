@@ -52,9 +52,9 @@ async function initPage(config) {
     ${form}<div id="message" class="muted"></div>
     <div class="table-wrap"><table id="records"><thead></thead><tbody></tbody></table></div>`;
 
-  async function load() {
+  async function load(quiet = false) {
     const query = new URLSearchParams(document.querySelector('#filter-form') ? readForm(document.querySelector('#filter-form')) : {}).toString();
-    showMessage('Loading...');
+    if (!quiet) showMessage('Loading...');
     try {
       const rows = await api(config.endpoint + (query ? `?${query}` : ''));
       const list = Array.isArray(rows) ? rows : (rows?.items || []);
@@ -65,7 +65,7 @@ async function initPage(config) {
       tbody.innerHTML = list.length ? list.map(row => `<tr>${config.columns.map(c => `<td>${renderCell(row, c)}</td>`).join('')}
         <td class="row-actions">${(config.rowActions || []).map((a, i) => `<button type="button" data-row="${escapeHtml(row[config.idKey || 'id'])}" data-rid="${i}">${escapeHtml(a.label(row))}</button>`).join('')}</td></tr>`).join('')
         : `<tr><td colspan="${config.columns.length + 1}" class="muted">No records match these filters.</td></tr>`;
-      showMessage(`${list.length} record(s).`);
+      if (!quiet) showMessage(`${list.length} record(s).`);
       if (config.onLoad) await config.onLoad(list);
     } catch (e) {
       showMessage(e.message, true);
@@ -83,9 +83,10 @@ async function initPage(config) {
       const raw = readForm(createForm);
       const values = config.serialize ? config.serialize(raw) : raw;
       const created = await api(config.endpoint, { method: config.createMethod || 'POST', body: JSON.stringify(values) });
-      showMessage(config.createdMessage ? config.createdMessage(created) : 'Saved.');
+      const message = config.createdMessage ? config.createdMessage(created) : 'Saved.';
       createForm.reset();
-      load();
+      await load(true);
+      showMessage(message);
     } catch (e) { showMessage(e.message, true); }
   });
 
