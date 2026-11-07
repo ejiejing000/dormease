@@ -3,7 +3,10 @@ const { httpError, id: isId, date: isDate } = require('../utils/validate');
 const tenancyModel = require('../models/tenancyModel');
 const audit = require('../utils/audit');
 
-exports.list = route(async (body, req) => tenancyModel.listForUser(req.user, req.query));
+exports.list = route(async (body, req) => {
+  guard(badIf(req.query.status && !['active', 'ended'].includes(req.query.status), 400, 'status must be active or ended'));
+  return tenancyModel.listForUser(req.user, req.query);
+});
 
 exports.register = route(async (body, req) => tenancyModel.register(req.user, req.query));
 
