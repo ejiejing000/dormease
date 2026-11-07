@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reservation Requests | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="notice">Visitors submit these without an account. Approving a request is what creates the official tenant record, the reservation, an optional lease and a one-time password invitation — a request on its own never starts billing.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Reservation requests',
+  roles: ['landlord', 'staff'],
+  endpoint: '/reservation-requests',
+  help: 'Pending requests appear first. Approve to turn an applicant into an official tenant.',
+  filters: [
+    { name: 'status', label: 'Status', type: 'select', options: [['', 'All statuses'], ['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['withdrawn', 'Withdrawn']] }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'full_name', label: 'Applicant' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Contact' },
+    { key: 'room_number', label: 'Room' },
+    { key: 'house_name', label: 'House' },
+    { key: 'preferred_move_in_date', label: 'Move-in', format: 'date' },
+    { key: 'status', label: 'Status', format: 'badge' },
+    { key: 'message', label: 'Message' }
+  ],
+  rowActions: [
+    {
+      label: () => 'Approve',
+      path: (id) => `/reservation-requests/${id}/approve`,
+      confirm: 'Approve this request, register the tenant and send a password invitation?',
+      fields: [
+        { name: 'move_in_date', label: 'Lease start date YYYY-MM-DD (blank = preferred date)' },
+        { name: 'occupants', label: 'Occupants for this bed space', type: 'number', value: '1' },
+        { name: 'start_tenancy', label: 'Start the lease now? true / false', type: 'boolean', value: 'false' },
+        { name: 'note', label: 'Review note (optional)' }
+      ],
+      done: (data) => data.invitation_url
+        ? `Approved. Tenant #${data.tenantId}, reservation #${data.reservationId}${data.tenancyId ? `, lease #${data.tenancyId}` : ''}. Invitation link (shown once): ${data.invitation_url}`
+        : `Approved. Tenant #${data.tenantId} already had an account, so no invitation was sent.`
+    },
+    {
+      label: () => 'Reject',
+      path: (id) => `/reservation-requests/${id}/reject`,
+      confirm: 'Reject this request?',
+      fields: [{ name: 'note', label: 'Reason shown to the applicant (optional)' }]
+    }
+  ]
+}));
+</script>
+</body>
+</html>

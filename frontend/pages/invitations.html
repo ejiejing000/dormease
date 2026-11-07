@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invitations | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<section class="card">
+  <h2>Onboarding coverage — LEFT JOIN</h2>
+  <p class="muted">Every tenant appears, including those with no invitation yet; every accepted invitation is counted through the account link.</p>
+  <div class="table-wrap"><table id="coverage"><thead><tr>
+    <th>Tenant</th><th>Email</th><th>Invitations</th><th>Accepted</th><th>Login account</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+<p class="notice">An invitation is the only way a tenant gets a password: the token is random, stored as a SHA-256 hash, single-use and expires. Registering a tenant or approving a request already sends one; use this screen to re-issue, inspect or revoke them.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const page = await initPage({
+  title: 'Account invitations',
+  roles: ['landlord', 'staff'],
+  endpoint: '/invitations',
+  createLabel: 'Issue an invitation to an existing tenant',
+  filters: [
+    { name: 'status', label: 'Status', type: 'select', options: [['', 'All'], ['pending', 'Pending'], ['accepted', 'Accepted'], ['expired', 'Expired or revoked']] }
+  ],
+  fields: [
+    { name: 'tenant_id', label: 'Tenant id', type: 'number', required: true },
+    { name: 'email', label: 'Email override (optional)', type: 'email' }
+  ],
+  createdMessage: (result) => `Invitation #${result.id} created. Link, shown once: ${result.invitation_url}`,
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'full_name', label: 'Tenant' },
+    { key: 'email', label: 'Sent to' },
+    { key: 'status', label: 'Status', format: 'badge' },
+    { key: 'created_by_name', label: 'Issued by' },
+    { key: 'created_at', label: 'Issued', format: 'date' },
+    { key: 'expires_at', label: 'Expires', format: 'date' }
+  ],
+  rowActions: [
+    {
+      label: () => 'Revoke',
+      path: (id) => `/invitations/${id}/revoke`,
+      method: 'PATCH',
+      confirm: 'Revoke this invitation? The link stops working immediately.'
+    },
+    {
+      label: () => 'Delete',
+      path: (id) => `/invitations/${id}`,
+      method: 'DELETE',
+      confirm: 'Delete this pending invitation row? Accepted invitations are kept as history.'
+    }
+  ]
+  });
+  if (!page) return;
+
+  try {
+    const coverage = await api('/invitations/coverage');
+    document.querySelector('#coverage tbody').innerHTML = coverage.length
+      ? coverage.map(c => `<tr><td>${escapeHtml(c.full_name)}</td><td>${escapeHtml(c.email || '-')}</td>
+          <td>${c.invitations}</td><td>${c.accepted}</td>
+          <td>${c.has_account ? '<span class="badge active">yes</span>' : '<span class="badge">no</span>'}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted">No tenants in scope.</td></tr>';
+  } catch (error) {
+    document.querySelector('#coverage tbody').innerHTML = `<tr><td colspan="5" class="error">${escapeHtml(error.message)}</td></tr>`;
+  }
+});
+</script>
+</body>
+</html>
