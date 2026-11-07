@@ -98,7 +98,7 @@ exports.create = async ({ tenant_id, room_id, start_date, occupants = 1 }, user)
      WHERE room_id = ? AND status = 'active' AND (end_date IS NULL OR end_date >= CURDATE())`, [room_id]);
   const people = Math.max(1, Number(occupants) || 1);
   if (Number(used[0].occupied) + people > Number(rooms[0].bed_capacity)) {
-    throw httpError(409, 'Room is already at bed capacity for the requested date');
+    throw httpError(400, 'Room is already at bed capacity for the requested date');
   }
   const [result] = await pool.execute(
     `INSERT INTO tenancies (tenant_id, room_id, start_date, occupants, status) VALUES (?,?,?,?,'active')`,
