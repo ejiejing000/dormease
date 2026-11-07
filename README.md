@@ -12,7 +12,7 @@ table to match commits to people.
 | Member | Name | GitHub username | Branch | Feature area |
 | --- | --- | --- | --- | --- |
 | 1 | Ejie Mar Q. Bongcawel | ejiejing000 | `feature/00-core-auth` | Core platform, security, staff admin, public room discovery |
-| 2 |  |  | `feature/10-properties` | Houses, rooms and amenities |
+| 2 | Jiraiyah Ethan S. Beligolo | Furinaa1013 | `feature/10-properties` | Houses, rooms and amenities |
 | 3 |  |  | `feature/20-tenants-leases` | Tenants, leases, reservations, waitlist |
 | 4 |  |  | `feature/30-utilities-billing` | Rates, readings, billing, payments |
 | 5 |  |  | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
