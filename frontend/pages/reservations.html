@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reservations | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="muted">Reservations are created only by authorised landlord/staff accounts, or automatically when a reservation request is approved. A held reservation releases itself once its hold expires.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Reservations',
+  roles: ['landlord', 'staff'],
+  endpoint: '/reservations',
+  createLabel: 'New reservation for an official tenant',
+  filters: [
+    { name: 'status', label: 'Status', type: 'select', options: [['', 'All statuses'], ['pending', 'Pending'], ['approved', 'Approved'], ['held', 'Held'], ['rejected', 'Rejected'], ['cancelled', 'Cancelled'], ['expired', 'Expired']] }
+  ],
+  fields: [
+    { name: 'tenant_id', label: 'Tenant id', type: 'number', required: true },
+    { name: 'room_id', label: 'Room id', type: 'number', required: true },
+    { name: 'start_date', label: 'Start date', type: 'date', required: true },
+    { name: 'hold', label: 'Hold the bed instead of confirming', type: 'checkbox' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'tenant_name', label: 'Tenant' },
+    { key: 'room_number', label: 'Room' },
+    { key: 'house_name', label: 'House' },
+    { key: 'start_date', label: 'Start', format: 'date' },
+    { key: 'status', label: 'Status', format: 'badge' },
+    { key: 'source', label: 'Source' },
+    { key: 'hold_expires_at', label: 'Hold expires', render: (r) => r.hold_expires_at ? formatDate(r.hold_expires_at) : '-' }
+  ],
+  rowActions: [
+    { label: (r) => r.status === 'pending' || r.status === 'held' ? 'Approve' : 'Re-approve', path: (id) => `/reservations/${id}/approve` },
+    { label: () => 'Hold', path: (id) => `/reservations/${id}/hold` },
+    { label: () => 'Reject', path: (id) => `/reservations/${id}/reject`, confirm: 'Reject this reservation?' },
+    { label: () => 'Cancel', path: (id) => `/reservations/${id}/cancel`, confirm: 'Cancel this reservation?' }
+  ]
+}));
+</script>
+</body>
+</html>
