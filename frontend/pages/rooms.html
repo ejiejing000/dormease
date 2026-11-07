@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rooms | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<section class="card">
+  <h2>Vacant rooms — RIGHT JOIN</h2>
+  <p class="muted">Rooms with no active lease, kept even when they were never leased. Only publicly listed rooms are included.</p>
+  <div class="table-wrap"><table id="vacancy"><thead><tr>
+    <th>House</th><th>Room</th><th>Beds</th><th>Free beds</th><th>Available</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+<p class="muted">Unlisting a room hides it from the public site without deleting lease or billing history.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const page = await initPage({
+  title: 'Rooms',
+  roles: ['landlord', 'staff'],
+  endpoint: '/rooms',
+  createLabel: 'Add a room',
+  filters: [
+    { name: 'houseId', label: 'House id', type: 'number' },
+    { name: 'status', label: 'Listing', type: 'select', options: [['', 'All rooms'], ['listed', 'Listed publicly'], ['unlisted', 'Hidden']] }
+  ],
+  fields: [
+    { name: 'house_id', label: 'House id', type: 'number', required: true },
+    { name: 'room_number', label: 'Room number', required: true },
+    { name: 'monthly_rent', label: 'Monthly rent per bed', type: 'number', step: '0.01', required: true },
+    { name: 'bed_capacity', label: 'Bed capacity', type: 'number', required: true },
+    { name: 'cooling_type', label: 'Cooling', type: 'select', options: [['fan', 'Fan'], ['aircon', 'Air-con'], ['none', 'None']] },
+    { name: 'amenities', label: 'Amenities (comma separated)' },
+    { name: 'photo_url', label: 'Photo URL (optional)' },
+    { name: 'storage_available', label: 'Has storage', type: 'checkbox' },
+    { name: 'is_listed', label: 'Show on public site', type: 'checkbox' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'house_name', label: 'House' },
+    { key: 'room_number', label: 'Room' },
+    { key: 'monthly_rent', label: 'Rent / bed', format: 'money' },
+    { key: 'bed_capacity', label: 'Beds' },
+    { key: 'available_beds', label: 'Free beds', render: (r) => r.available_beds ?? '-' },
+    { key: 'cooling_type', label: 'Cooling' },
+    { key: 'active_tenancies', label: 'Leases' },
+    { key: 'is_listed', label: 'Listed', format: 'bool' }
+  ],
+  rowActions: [
+    {
+      label: (r) => r.is_listed ? 'Hide from public' : 'Publish',
+      path: (id) => `/rooms/${id}/listing`,
+      body: (r) => ({ is_listed: !r.is_listed }),
+      done: (data) => data.is_listed ? 'Room is publicly visible.' : 'Room is hidden from visitors.'
+    },
+    {
+      label: () => 'Edit rent',
+      path: (id) => `/rooms/${id}`,
+      method: 'PATCH',
+      fields: [{ name: 'monthly_rent', label: 'New monthly rent per bed', type: 'number', required: true }]
+    },
+    {
+      label: () => 'Delete',
+      path: (id) => `/rooms/${id}`,
+      method: 'DELETE',
+      confirm: (r) => `Delete room ${r.room_number}? Only an unused room can be deleted; unlist it instead when it has lease or reservation history.`
+    }
+  ]
+  });
+  if (!page) return;
+
+  try {
+    const rooms = await api('/rooms/vacancy-report');
+    document.querySelector('#vacancy tbody').innerHTML = rooms.length
+      ? rooms.map(r => `<tr><td>${escapeHtml(r.house_name)}</td><td>${escapeHtml(r.room_number)}</td>
+          <td>${r.bed_capacity}</td><td>${r.available_beds}</td>
+          <td>${r.is_available ? '<span class="badge active">yes</span>' : '<span class="badge">no</span>'}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted">No vacant listed rooms.</td></tr>';
+  } catch (error) {
+    document.querySelector('#vacancy tbody').innerHTML = `<tr><td colspan="5" class="error">${escapeHtml(error.message)}</td></tr>`;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Houses | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="muted">Only the owning landlord can add or change a house. Rooms inherit the house, and staff see exactly the houses they are assigned to.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Boarding houses',
+  roles: ['landlord'],
+  endpoint: '/houses',
+  createLabel: 'Add a house',
+  filters: [{ name: 'q', label: 'Name or address contains' }],
+  fields: [
+    { name: 'name', label: 'House name', required: true },
+    { name: 'address', label: 'Address', required: true },
+    { name: 'description', label: 'Description shown on the public site', type: 'textarea' }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'name', label: 'Name' },
+    { key: 'address', label: 'Address' },
+    { key: 'owner_name', label: 'Owner' },
+    { key: 'room_count', label: 'Rooms' },
+    { key: 'active_tenancies', label: 'Active leases' },
+    { key: 'is_active', label: 'Active', format: 'bool' }
+  ],
+  rowActions: [
+    {
+      label: (r) => r.is_active ? 'Deactivate' : 'Activate',
+      path: (id) => `/houses/${id}`,
+      method: 'PATCH',
+      body: (r) => ({ is_active: !r.is_active }),
+      confirm: (r) => `${r.is_active ? 'Deactivate' : 'Activate'} ${r.name}? Deactivating hides its rooms from visitors.`
+    },
+    {
+      label: () => 'Rename',
+      path: (id) => `/houses/${id}`,
+      method: 'PATCH',
+      fields: [{ name: 'name', label: 'New house name', required: true }]
+    },
+    {
+      label: () => 'Remove',
+      path: (id) => `/houses/${id}`,
+      method: 'DELETE',
+      confirm: (r) => `Remove ${r.name}? The record is deactivated and deletes no history; its rooms stop being visible to visitors.`,
+      done: () => 'House deactivated. Tenancy and billing history is kept.'
+    }
+  ]
+}));
+</script>
+</body>
+</html>
