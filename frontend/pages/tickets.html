@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maintenance Tickets | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+<section id="panel" class="card hidden"></section>
+<section id="page" class="card"></section>
+<section class="card">
+  <h2>Ticket history report — LEFT JOIN</h2>
+  <p class="muted">Every ticket with each status change. Tickets that were never updated still appear, with empty history columns.</p>
+  <div class="table-wrap"><table id="history-report"><thead><tr>
+    <th>Ticket</th><th>Tenant</th><th>Room</th><th>Current</th><th>History status</th><th>Changed by</th><th>Note</th><th>When</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+<p class="muted">Tenants may only file and follow tickets for their own active lease. Tickets left untouched past the SLA are escalated by the background job, once.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = getUser();
+  const manager = user && (user.role === 'landlord' || user.role === 'staff');
+
+  const page = await initPage({
+    title: manager ? 'Maintenance tickets' : 'My maintenance requests',
+    roles: ['landlord', 'staff', 'tenant'],
+    endpoint: '/tickets',
+    createLabel: 'File a ticket',
+    filters: manager ? [
+      { name: 'status', label: 'Status', type: 'select', options: [['', 'All'], ['open', 'Open'], ['in_progress', 'In progress'], ['escalated', 'Escalated'], ['resolved', 'Resolved'], ['closed', 'Closed']] },
+      { name: 'open', label: 'Only open / escalated', type: 'checkbox' }
+    ] : [],
+    fields: [
+      ...(manager ? [{ name: 'tenancy_id', label: 'Lease (tenancy) id', type: 'number', required: true }] : []),
+      { name: 'title', label: 'What is broken?', required: true },
+      { name: 'description', label: 'Details', type: 'textarea', required: true },
+      { name: 'priority', label: 'Priority', type: 'select', options: [['normal', 'Normal'], ['low', 'Low'], ['high', 'High'], ['urgent', 'Urgent']] }
+    ],
+    columns: [
+      { key: 'id', label: '#' },
+      ...(manager ? [{ key: 'tenant_name', label: 'Tenant' }] : []),
+      { key: 'room_number', label: 'Room' },
+      { key: 'title', label: 'Issue' },
+      { key: 'priority', label: 'Priority' },
+      { key: 'status', label: 'Status', format: 'badge' },
+      { key: 'created_at', label: 'Reported', format: 'date' },
+      { key: 'updated_at', label: 'Last update', format: 'date' }
+    ],
+    rowActions: [
+      {
+        label: () => 'History',
+        path: (id) => `/tickets/${id}`,
+        method: 'GET',
+        reload: false,
+        render: (t) => `<h2>Ticket #${t.id}: ${escapeHtml(t.title)}</h2>
+          <p>${escapeHtml(t.description)}</p>
+          <table><thead><tr><th>Status</th><th>Changed by</th><th>Note</th><th>When</th></tr></thead><tbody>
+            ${(t.history || []).map(h => `<tr><td><span class="badge ${escapeHtml(h.status)}">${escapeHtml(h.status)}</span></td><td>${escapeHtml(h.changed_by_name || 'system')}</td><td>${escapeHtml(h.note || '')}</td><td>${formatDate(h.created_at)}</td></tr>`).join('')}
+          </tbody></table>`
+      },
+      ...(manager ? [
+        { label: (r) => r.status === 'resolved' ? 'Close' : 'Resolve', path: (id) => `/tickets/${id}/status`, body: (r) => ({ status: r.status === 'resolved' ? 'closed' : 'resolved' }), fields: [{ name: 'note', label: 'Note for the tenant (optional)' }] },
+        { label: () => 'In progress', path: (id) => `/tickets/${id}/status`, body: () => ({ status: 'in_progress' }), fields: [{ name: 'note', label: 'Note (optional)' }] },
+        { label: () => 'Escalate', path: (id) => `/tickets/${id}/status`, body: () => ({ status: 'escalated' }), confirm: 'Escalate this ticket to the landlord?', fields: [{ name: 'note', label: 'Reason (optional)' }] },
+        { label: () => 'Edit priority', path: (id) => `/tickets/${id}`, method: 'PATCH', fields: [{ name: 'priority', label: 'New priority (low / normal / high / urgent)', required: true }] },
+        { label: () => 'Delete', path: (id) => `/tickets/${id}`, method: 'DELETE', confirm: 'Delete this ticket and its status history?' }
+      ] : [])
+    ]
+  });
+  if (!page) return;
+  if (!manager) {
+    document.querySelector('#history-report').closest('section').classList.add('hidden');
+    return;
+  }
+
+  try {
+    const rows = await api('/tickets/history-report');
+    document.querySelector('#history-report tbody').innerHTML = rows.length
+      ? rows.map(r => `<tr><td>#${r.ticket_id} ${escapeHtml(r.title)}</td><td>${escapeHtml(r.tenant_name)}</td>
+          <td>${escapeHtml(r.room_number)}</td>
+          <td><span class="badge ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span></td>
+          <td>${r.history_status ? `<span class="badge ${escapeHtml(r.history_status)}">${escapeHtml(r.history_status)}</span>` : '-'}</td>
+          <td>${escapeHtml(r.changed_by_name || '-')}</td><td>${escapeHtml(r.note || '-')}</td>
+          <td>${r.changed_at ? formatDate(r.changed_at) : '-'}</td></tr>`).join('')
+      : '<tr><td colspan="8" class="muted">No tickets in scope.</td></tr>';
+  } catch (error) {
+    document.querySelector('#history-report tbody').innerHTML = `<tr><td colspan="8" class="error">${escapeHtml(error.message)}</td></tr>`;
+  }
+});
+</script>
+</body>
+</html>
