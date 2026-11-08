@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Utility Rates | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="notice">Tiers are consumed by the billing engine through the tiered_utility_cost function, so water and electricity can be charged progressively rather than at one flat rate. Staff may change rates only when their assignment grants can_manage_rates.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Utility rates',
+  roles: ['landlord', 'staff'],
+  endpoint: '/rates',
+  createLabel: 'Add a rate',
+  filters: [
+    { name: 'houseId', label: 'House id', type: 'number' },
+    { name: 'utilityCode', label: 'Utility', type: 'select', options: [['', 'All utilities'], ['WATER', 'Water'], ['POWER', 'Electricity']] }
+  ],
+  fields: [
+    { name: 'house_id', label: 'House id', type: 'number', required: true },
+    { name: 'utility_code', label: 'Utility code', type: 'select', options: [['WATER', 'Water (WATER)'], ['POWER', 'Electricity (POWER)']], required: true },
+    { name: 'fixed_charge', label: 'Fixed charge', type: 'number', step: '0.01' },
+    { name: 'effective_from', label: 'Effective from', type: 'date', required: true }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'house_name', label: 'House' },
+    { key: 'code', label: 'Utility' },
+    { key: 'fixed_charge', label: 'Fixed charge', format: 'money' },
+    { key: 'effective_from', label: 'Effective from', format: 'date' },
+    { key: 'tier_count', label: 'Tiers' }
+  ],
+  rowActions: [
+    {
+      label: () => 'Add tier',
+      path: (id) => `/rates/${id}/tiers`,
+      fields: [
+        { name: 'lower_units', label: 'Lower units (inclusive)', type: 'number', required: true },
+        { name: 'upper_units', label: 'Upper units (blank = no cap)' },
+        { name: 'price_per_unit', label: 'Price per unit', type: 'number', required: true }
+      ],
+      done: (tiers) => `Rate now has ${tiers.length} tier(s).`
+    }
+  ]
+}));
+</script>
+</body>
+</html>

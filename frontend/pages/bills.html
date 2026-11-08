@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bills | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+<div id="manage-actions" class="hidden"><button id="generate-one" type="button">Generate one bill</button> <button id="generate-all" type="button">Generate all bills for a month</button> <button id="preview" type="button">Preview without saving</button></div>
+<section id="page" class="card"></section>
+<section class="card">
+  <h2>Bill and payment ledger — FULL OUTER JOIN</h2>
+  <p class="muted">Bills with no payment and payments with no bill both appear. MySQL 8 emulates FULL OUTER JOIN with a LEFT JOIN plus the RIGHT JOIN branch.</p>
+  <div class="table-wrap"><table id="ledger"><thead><tr>
+    <th>Bill</th><th>Tenant</th><th>Room</th><th>Month</th><th>Total</th><th>Bill status</th><th>Payment</th><th>Amount</th><th>Match</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+<p class="notice">Rent is charged per bed, so it is never divided between roommates; only shared utilities are split. The first month is prorated by occupied days, and regenerating an unpaid month replaces the old figures instead of stacking a second bill.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = getUser();
+  const manager = user && (user.role === 'landlord' || user.role === 'staff');
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  initPage({
+    title: manager ? 'Monthly bills' : 'My bills',
+    roles: ['landlord', 'staff', 'tenant'],
+    endpoint: '/bills',
+    filters: [
+      { name: 'month', label: 'Billing month', type: 'month', value: currentMonth },
+      { name: 'status', label: 'Status', type: 'select', options: [['', 'All'], ['unpaid', 'Unpaid'], ['partial', 'Partial'], ['paid', 'Paid'], ['overdue', 'Overdue'], ['void', 'Void']] }
+    ],
+    columns: [
+      { key: 'id', label: '#' },
+      ...(manager ? [{ key: 'tenant_name', label: 'Tenant' }] : []),
+      { key: 'house_name', label: 'House' },
+      { key: 'room_number', label: 'Room' },
+      { key: 'billing_month', label: 'Month', format: 'date' },
+      { key: 'rent_amount', label: 'Rent', format: 'money' },
+      { key: 'water_amount', label: 'Water', format: 'money' },
+      { key: 'electricity_amount', label: 'Electricity', format: 'money' },
+      { key: 'late_fee', label: 'Late fee', format: 'money' },
+      { key: 'total_amount', label: 'Total', format: 'money' },
+      { key: 'paid_amount', label: 'Paid', format: 'money' },
+      { key: 'due_date', label: 'Due', format: 'date' },
+      { key: 'status', label: 'Status', format: 'badge' }
+    ],
+    rowActions: [
+      {
+        label: () => 'Line items',
+        path: (id) => `/bills/${id}`,
+        method: 'GET',
+        reload: false,
+        done: (bill) => `${bill.items.length} item(s): ` + bill.items.map(i => `${i.description} ${formatMoney(i.amount)}`).join(' | ')
+      },
+      ...(manager ? [{
+        label: () => 'Edit due date',
+        path: (id) => `/bills/${id}`,
+        method: 'PATCH',
+        fields: [{ name: 'due_date', label: 'New due date (YYYY-MM-DD)', required: true }],
+        done: () => 'Due date updated and total recalculated.'
+      }, {
+        label: () => 'Void',
+        path: (id) => `/bills/${id}/void`,
+        confirm: 'Void this bill? Payments already recorded are kept for the audit trail.',
+        fields: [{ name: 'reason', label: 'Reason (optional)' }]
+      }, {
+        label: () => 'Delete',
+        path: (id) => `/bills/${id}`,
+        method: 'DELETE',
+        confirm: 'Delete this bill? Only a bill with no recorded payments can be deleted; use Void otherwise.'
+      }] : [])
+    ]
+  });
+
+  if (!manager) return;
+  document.querySelector('#manage-actions').classList.remove('hidden');
+
+  document.querySelector('#generate-one').addEventListener('click', async () => {
+    const tenancyId = prompt('Lease (tenancy) id', '');
+    if (!tenancyId) return;
+    const month = prompt('Billing month YYYY-MM', currentMonth);
+    if (!month) return;
+    try {
+      const result = await api('/bills/generate', { method: 'POST', body: JSON.stringify({ tenancy_id: Number(tenancyId), billing_month: month }) });
+      alert(result.skipped ? `Skipped: ${result.reason || 'nothing to bill'}` : `Bill #${result.billId} total ${formatMoney(result.total)}.`);
+    } catch (error) { alert(error.message); }
+  });
+
+  document.querySelector('#generate-all').addEventListener('click', async () => {
+    const month = prompt('Billing month for every active lease YYYY-MM', currentMonth);
+    if (!month) return;
+    const houseId = prompt('Restrict to one house id? (blank = all your houses)');
+    try {
+      const result = await api('/bills/generate-all', { method: 'POST', body: JSON.stringify({ billing_month: month, house_id: houseId ? Number(houseId) : undefined }) });
+      const failures = result.results.filter(r => r.error);
+      alert(`Processed ${result.processed} active lease(s).` + (failures.length ? `\nFailed: ${failures.map(f => `#${f.tenancyId}: ${f.error}`).join('; ')}` : ''));
+    } catch (error) { alert(error.message); }
+  });
+
+  document.querySelector('#preview').addEventListener('click', async () => {
+    const tenancyId = prompt('Lease (tenancy) id to preview', '');
+    if (!tenancyId) return;
+    const month = prompt('Billing month YYYY-MM', currentMonth);
+    if (!month) return;
+    const water = prompt('Water units (blank = use stored readings)');
+    const electricity = prompt('Electricity units (blank = use stored readings)');
+    try {
+      const preview = await api('/bill-preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          tenancy_id: Number(tenancyId),
+          billing_month: month,
+          water_units: water === '' ? undefined : Number(water),
+          electricity_units: electricity === '' ? undefined : Number(electricity)
+        })
+      });
+      alert(preview.items.map(i => `${i.description}: ${i.amount}`).join('\n') + `\n\nTotal ${formatMoney(preview.total)}`);
+    } catch (error) { alert(error.message); }
+  });
+
+  try {
+    const ledger = await api('/bills/ledger?limit=25');
+    document.querySelector('#ledger tbody').innerHTML = ledger.length
+      ? ledger.map(l => `<tr><td>${l.bill_id ?? '-'}</td><td>${escapeHtml(l.tenant_name ?? '-')}</td>
+          <td>${escapeHtml(l.room_number ?? '-')}</td><td>${l.billing_month ? formatDate(l.billing_month) : '-'}</td>
+          <td>${l.total_amount !== null ? formatMoney(l.total_amount) : '-'}</td>
+          <td>${l.bill_status ? `<span class="badge ${escapeHtml(l.bill_status)}">${escapeHtml(l.bill_status)}</span>` : '-'}</td>
+          <td>${l.payment_id ?? '-'}</td><td>${l.payment_amount !== null ? formatMoney(l.payment_amount) : '-'}</td>
+          <td>${escapeHtml(l.match_type)}</td></tr>`).join('')
+      : '<tr><td colspan="9" class="muted">No bills or payments in scope.</td></tr>';
+  } catch (error) {
+    document.querySelector('#ledger tbody').innerHTML = `<tr><td colspan="9" class="error">${escapeHtml(error.message)}</td></tr>`;
+  }
+});
+</script>
+</body>
+</html>
