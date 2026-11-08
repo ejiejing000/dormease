@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payments | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+<section id="panel" class="card hidden"></section>
+<section id="page" class="card"></section>
+<p class="muted">A payment cannot exceed the outstanding balance of its bill, and the bill status moves unpaid → partial → paid on its own.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const user = getUser();
+  const manager = user && (user.role === 'landlord' || user.role === 'staff');
+
+  initPage({
+    title: manager ? 'Payments and receipts' : 'My payments',
+    roles: ['landlord', 'staff', 'tenant'],
+    endpoint: '/payments',
+    createLabel: 'Record a payment',
+    filters: [{ name: 'billId', label: 'Bill id', type: 'number' }],
+    fields: manager ? [
+      { name: 'bill_id', label: 'Bill id', type: 'number', required: true },
+      { name: 'amount', label: 'Amount received', type: 'number', step: '0.01', required: true },
+      { name: 'method', label: 'Method', type: 'select', options: [['cash', 'Cash'], ['bank_transfer', 'Bank transfer'], ['e_wallet', 'E-wallet'], ['other', 'Other']] },
+      { name: 'reference_no', label: 'Reference number' },
+      { name: 'paid_at', label: 'Received on (optional)', type: 'date' }
+    ] : null,
+    columns: [
+      { key: 'id', label: '#' },
+      ...(manager ? [{ key: 'tenant_name', label: 'Tenant' }] : []),
+      { key: 'house_name', label: 'House' },
+      { key: 'room_number', label: 'Room' },
+      { key: 'billing_month', label: 'Bill month', format: 'date' },
+      { key: 'amount', label: 'Amount', format: 'money' },
+      { key: 'method', label: 'Method' },
+      { key: 'reference_no', label: 'Reference' },
+      { key: 'paid_at', label: 'Paid on', format: 'date' },
+      { key: 'bill_status', label: 'Bill status', format: 'badge' },
+      ...(manager ? [{ key: 'received_by_name', label: 'Received by' }] : [])
+    ],
+    rowActions: [
+      {
+        label: () => 'Receipt',
+        path: (id) => `/payments/${id}/receipt`,
+        method: 'GET',
+        reload: false,
+        render: (r) => `<h2>Receipt for payment #${r.receipt.id}</h2>
+          <dl class="detail">
+            <dt>Tenant</dt><dd>${escapeHtml(r.tenant || '-')}</dd>
+            <dt>House / room</dt><dd>${escapeHtml(r.house || '-')} · ${escapeHtml(r.room || '-')}</dd>
+            <dt>Bill</dt><dd>#${r.bill.id} for ${formatDate(r.bill.month)} — ${escapeHtml(r.bill.status)}, total ${formatMoney(r.bill.total)}</dd>
+            <dt>Paid</dt><dd>${formatMoney(r.receipt.amount)} by ${escapeHtml(r.receipt.method)}${r.receipt.reference ? ` (ref ${escapeHtml(r.receipt.reference)})` : ''} on ${formatDate(r.receipt.paidAt)}</dd>
+          </dl>
+          <table><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>
+            ${r.items.map(i => `<tr><td>${escapeHtml(i.description)}</td><td>${i.quantity}</td><td>${formatMoney(i.unit_price)}</td><td>${formatMoney(i.amount)}</td></tr>`).join('')}
+          </tbody></table>
+          <p class="muted">All payments on this bill: ${r.payments.map(p => `${formatMoney(p.amount)} (${escapeHtml(p.method)})`).join(', ')}</p>`
+      }
+    ]
+  });
+});
+</script>
+</body>
+</html>

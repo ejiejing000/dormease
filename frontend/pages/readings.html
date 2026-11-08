@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meter Readings | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container"><section id="page" class="card"></section>
+<p class="muted">Leave "previous reading" empty to take it from the last reading of the same utility for this lease. A reading lower than the previous one is rejected.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => initPage({
+  title: 'Meter readings',
+  roles: ['landlord', 'staff'],
+  endpoint: '/readings',
+  createLabel: 'Record a reading',
+  filters: [
+    { name: 'houseId', label: 'House id', type: 'number' },
+    { name: 'tenancyId', label: 'Lease id', type: 'number' },
+    { name: 'period', label: 'Period (first day of month)', type: 'date' }
+  ],
+  fields: [
+    { name: 'tenancy_id', label: 'Lease (tenancy) id', type: 'number', required: true },
+    { name: 'utility_code', label: 'Utility', type: 'select', options: [['WATER', 'Water (WATER)'], ['POWER', 'Electricity (POWER)']], required: true },
+    { name: 'reading_period', label: 'Reading period', type: 'date', required: true },
+    { name: 'previous_reading', label: 'Previous reading (optional)', type: 'number', step: '0.001' },
+    { name: 'current_reading', label: 'Current reading', type: 'number', step: '0.001', required: true }
+  ],
+  columns: [
+    { key: 'id', label: '#' },
+    { key: 'tenant_name', label: 'Tenant' },
+    { key: 'room_number', label: 'Room' },
+    { key: 'utility_code', label: 'Utility' },
+    { key: 'reading_period', label: 'Period', format: 'date' },
+    { key: 'previous_reading', label: 'Previous' },
+    { key: 'current_reading', label: 'Current' },
+    { key: 'units_used', label: 'Units used' }
+  ],
+  rowActions: []
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifications | DormEase</title>
+<link rel="stylesheet" href="../css/style.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/nav.js"></script>
+<script defer src="../js/ui.js"></script>
+</head>
+<body>
+<header><strong>DormEase</strong><nav id="top-nav"></nav></header>
+<main class="container">
+<div id="manager-actions" class="hidden"><button id="mark-all" type="button">Mark everything read</button></div>
+<section id="page" class="card"></section>
+<p class="muted">Landlords and staff also see an "Announce" form here; a tenant only ever sees their own messages because the API filters by the account id in the token.</p>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = getUser();
+  const manager = user && (user.role === 'landlord' || user.role === 'staff');
+  if (manager) document.querySelector('#manager-actions').classList.remove('hidden');
+
+  const page = await initPage({
+    title: 'Messages',
+    roles: ['landlord', 'staff', 'tenant'],
+    endpoint: '/notifications',
+    createLabel: manager ? 'Announce to a user account' : null,
+    filters: [],
+    fields: manager ? [
+      { name: 'user_id', label: 'Recipient user id', type: 'number', required: true },
+      { name: 'title', label: 'Title', required: true },
+      { name: 'message', label: 'Message', type: 'textarea', required: true },
+      { name: 'channel', label: 'Channel', type: 'select', options: [['in_app', 'In app'], ['email', 'Email']] }
+    ] : null,
+    columns: [
+      { key: 'id', label: '#' },
+      { key: 'title', label: 'Title' },
+      { key: 'message', label: 'Message' },
+      { key: 'channel', label: 'Channel' },
+      { key: 'created_at', label: 'Received', format: 'date' },
+      { key: 'is_read', label: 'Read', render: (r) => r.is_read ? 'yes' : '<span class="badge pending">new</span>' }
+    ],
+    rowActions: [
+      { label: () => 'Mark read', path: (id) => `/notifications/${id}/read`, method: 'PATCH' },
+      { label: () => 'Delete', path: (id) => `/notifications/${id}`, method: 'DELETE', confirm: 'Delete this message?' }
+    ]
+  });
+
+  if (!manager || !page) return;
+  document.querySelector('#mark-all').addEventListener('click', async () => {
+    try {
+      const result = await api('/notifications/all/read', { method: 'PATCH' });
+      showMessage(`Marked ${result.marked} message(s) read.`);
+      page.load();
+    } catch (error) { showMessage(error.message, true); }
+  });
+});
+</script>
+</body>
+</html>
