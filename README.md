@@ -18,7 +18,7 @@ table to match commits to people.
 | 5 |  |  | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
 | 6 | Aisha Janine L. Babor | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, settings |
 | 5 | Jessa S. Boquecosa  | LittleMiss10 | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
-| 6 |  |  | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, settings |
+| 6 | Aisha Janine L. Babor | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, settings |
 
 ## The three access areas
 
