@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reservation request status | DORMEASE</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/api.js"></script>
+  <script defer src="js/nav.js"></script>
+  <script defer src="js/public.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">DORMEASE<span>Boarding-house management</span></div>
+    <nav id="top-nav"></nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Check a reservation request</h1>
+      <p class="muted">Use the request number from your confirmation together with the email address you submitted.</p>
+      <form id="status-form" class="filters">
+        <label>Request number<input name="id" required inputmode="numeric"></label>
+        <label>Email<input name="email" type="email" required></label>
+        <button type="submit">Check status</button>
+      </form>
+      <div id="status-result"></div>
+      <p class="notice">Once a request is approved, staff register you as an official tenant and email a one-time link to set your password. Sign in with that account to see your room, bills and receipts.</p>
+    </section>
+  </main>
+
+  <footer>DORMEASE — status checks only expose the request you created.</footer>
+</body>
+</html>
