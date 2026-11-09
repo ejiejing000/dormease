@@ -109,8 +109,11 @@ async function initPage(config) {
       body = { ...body, ...answers };
     }
     showMessage('Working...');
+    const method = action.method || 'POST';
+    const request = { method };
+    if (method !== 'GET' && method !== 'HEAD') request.body = JSON.stringify(body);
     try {
-      const result = await api(action.path(rowId, row), { method: action.method || 'POST', body: JSON.stringify(body) });
+      const result = await api(action.path(rowId, row), request);
       if (action.render) {
         const panel = document.querySelector('#panel');
         if (panel) { panel.classList.remove('hidden'); panel.innerHTML = action.render(result); }
