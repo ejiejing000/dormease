@@ -181,6 +181,76 @@ returning 404).
 - Late fees and ticket escalation are guarded by database state (`late_fee_applied_at`,
   `escalated_at`), so the cron jobs are safe to re-run.
 
+## Entity relationship diagram
+
+26 tables. Every edge below is a foreign key in `database/schema/`; the label names the column on the
+child row. `||` means exactly one, `|o` zero or one, and `o{` zero or many — `|o` is used wherever the
+column is nullable, so the optional links are visible at a glance.
+
+```mermaid
+erDiagram
+  USERS |o--o{ HOUSES : "owner_user_id"
+  HOUSES ||--o{ ROOMS : "house_id"
+  USERS ||--o{ STAFF_ASSIGNMENTS : "user_id"
+  HOUSES ||--o{ STAFF_ASSIGNMENTS : "house_id"
+  ROOMS ||--o{ ROOM_AMENITY_MAP : "room_id"
+  ROOM_AMENITIES ||--o{ ROOM_AMENITY_MAP : "amenity_id"
+
+  USERS |o--o{ TENANTS : "user_id"
+  TENANTS ||--o{ TENANCIES : "tenant_id"
+  ROOMS ||--o{ TENANCIES : "room_id"
+  TENANTS ||--o{ RESERVATIONS : "tenant_id"
+  ROOMS ||--o{ RESERVATIONS : "room_id"
+  RESERVATIONS ||--o{ RESERVATION_EVENTS : "reservation_id"
+  ROOMS ||--o{ RESERVATION_REQUESTS : "room_id"
+  USERS |o--o{ RESERVATION_REQUESTS : "reviewed_by"
+  RESERVATIONS |o--o{ RESERVATION_REQUESTS : "created_reservation_id"
+  TENANTS ||--o{ WAITLIST : "tenant_id"
+  ROOMS ||--o{ WAITLIST : "room_id"
+
+  HOUSES ||--o{ UTILITY_RATES : "house_id"
+  UTILITY_TYPES ||--o{ UTILITY_RATES : "utility_type_id"
+  UTILITY_RATES ||--o{ RATE_TIERS : "utility_rate_id"
+  TENANCIES ||--o{ METER_READINGS : "tenancy_id"
+  UTILITY_TYPES ||--o{ METER_READINGS : "utility_type_id"
+  USERS ||--o{ METER_READINGS : "recorded_by"
+  TENANCIES ||--o{ BILLS : "tenancy_id"
+  BILLS ||--o{ BILL_ITEMS : "bill_id"
+  BILLS ||--o{ PAYMENTS : "bill_id"
+  USERS ||--o{ PAYMENTS : "received_by"
+
+  TENANCIES ||--o{ MAINTENANCE_TICKETS : "tenancy_id"
+  USERS |o--o{ MAINTENANCE_TICKETS : "created_by"
+  MAINTENANCE_TICKETS ||--o{ TICKET_STATUS_HISTORY : "ticket_id"
+  USERS |o--o{ TICKET_STATUS_HISTORY : "changed_by"
+  USERS ||--o{ NOTIFICATIONS : "user_id"
+  USERS |o--o{ AUDIT_LOGS : "actor_user_id"
+  TENANTS ||--o{ ACCOUNT_INVITATIONS : "tenant_id"
+  USERS |o--o{ ACCOUNT_INVITATIONS : "created_by"
+
+  EMAIL_OUTBOX {
+    bigint id PK
+  }
+  SYSTEM_SETTINGS {
+    varchar setting_key PK
+  }
+```
+
+Three things explain most of the shape:
+
+- **`users` is not `tenants`.** A user row is an account (login, role); a tenant row is a person the
+  house manages. `tenants.user_id` is nullable, so a tenant can hold a lease and be billed before they
+  ever log in — that link is written only by the invitation flow, never by a public form.
+- **A booking has two stages.** `reservation_requests` is the anonymous public ask; `reservations` is
+  the staff-managed hold. Approving a request sets `reservation_requests.created_reservation_id` and
+  optionally starts a `tenancies` row.
+- **Billing hangs off the lease, not the person.** `bills` reference `tenancies`, so submitting a
+  public request cannot produce a bill. `email_outbox` and `system_settings` have no foreign keys and
+  are declared on their own.
+
+Every column, primary key, unique key and enum value — plus the three views, the stored function and
+both triggers — is in [`docs/erd.md`](docs/erd.md).
+
 ## Documentation
 
 - [`docs/api-endpoints.md`](docs/api-endpoints.md) — every endpoint, who may call it, and its fields
