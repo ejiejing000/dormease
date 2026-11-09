@@ -183,50 +183,50 @@ returning 404).
 
 ## Entity relationship diagram
 
-26 tables. Every edge below is a foreign key in `database/schema/`; the label names the column on the
-child row. `||` means exactly one, `|o` zero or one, and `o{` zero or many — `|o` is used wherever the
-column is nullable, so the optional links are visible at a glance.
+26 tables, 35 foreign keys. Each label reads `parent:child` followed by the column on the child row:
+`1:M` one-to-many, `0..1:M` a parent that may be absent, `1:1` one-to-one, `M:N` many-to-many. The
+crow's foot at each end draws the same fact as a shape.
 
 ```mermaid
 erDiagram
-  USERS |o--o{ HOUSES : "owner_user_id"
-  HOUSES ||--o{ ROOMS : "house_id"
-  USERS ||--o{ STAFF_ASSIGNMENTS : "user_id"
-  HOUSES ||--o{ STAFF_ASSIGNMENTS : "house_id"
-  ROOMS ||--o{ ROOM_AMENITY_MAP : "room_id"
-  ROOM_AMENITIES ||--o{ ROOM_AMENITY_MAP : "amenity_id"
+  USERS |o--o{ HOUSES : "0..1:M · owner_user_id"
+  HOUSES ||--o{ ROOMS : "1:M · house_id"
+  USERS ||--o{ STAFF_ASSIGNMENTS : "1:M · user_id"
+  HOUSES ||--o{ STAFF_ASSIGNMENTS : "1:M · house_id"
+  ROOMS ||--o{ ROOM_AMENITY_MAP : "1:M · room_id"
+  ROOM_AMENITIES ||--o{ ROOM_AMENITY_MAP : "1:M · amenity_id"
 
-  USERS |o--o{ TENANTS : "user_id"
-  TENANTS ||--o{ TENANCIES : "tenant_id"
-  ROOMS ||--o{ TENANCIES : "room_id"
-  TENANTS ||--o{ RESERVATIONS : "tenant_id"
-  ROOMS ||--o{ RESERVATIONS : "room_id"
-  RESERVATIONS ||--o{ RESERVATION_EVENTS : "reservation_id"
-  ROOMS ||--o{ RESERVATION_REQUESTS : "room_id"
-  USERS |o--o{ RESERVATION_REQUESTS : "reviewed_by"
-  RESERVATIONS |o--o{ RESERVATION_REQUESTS : "created_reservation_id"
-  TENANTS ||--o{ WAITLIST : "tenant_id"
-  ROOMS ||--o{ WAITLIST : "room_id"
+  USERS |o--o{ TENANTS : "0..1:M · user_id"
+  TENANTS ||--o{ TENANCIES : "1:M · tenant_id"
+  ROOMS ||--o{ TENANCIES : "1:M · room_id"
+  TENANTS ||--o{ RESERVATIONS : "1:M · tenant_id"
+  ROOMS ||--o{ RESERVATIONS : "1:M · room_id"
+  RESERVATIONS ||--o{ RESERVATION_EVENTS : "1:M · reservation_id"
+  ROOMS ||--o{ RESERVATION_REQUESTS : "1:M · room_id"
+  USERS |o--o{ RESERVATION_REQUESTS : "0..1:M · reviewed_by"
+  RESERVATIONS |o--o{ RESERVATION_REQUESTS : "0..1:M · created_reservation_id"
+  TENANTS ||--o{ WAITLIST : "1:M · tenant_id"
+  ROOMS ||--o{ WAITLIST : "1:M · room_id"
 
-  HOUSES ||--o{ UTILITY_RATES : "house_id"
-  UTILITY_TYPES ||--o{ UTILITY_RATES : "utility_type_id"
-  UTILITY_RATES ||--o{ RATE_TIERS : "utility_rate_id"
-  TENANCIES ||--o{ METER_READINGS : "tenancy_id"
-  UTILITY_TYPES ||--o{ METER_READINGS : "utility_type_id"
-  USERS ||--o{ METER_READINGS : "recorded_by"
-  TENANCIES ||--o{ BILLS : "tenancy_id"
-  BILLS ||--o{ BILL_ITEMS : "bill_id"
-  BILLS ||--o{ PAYMENTS : "bill_id"
-  USERS ||--o{ PAYMENTS : "received_by"
+  HOUSES ||--o{ UTILITY_RATES : "1:M · house_id"
+  UTILITY_TYPES ||--o{ UTILITY_RATES : "1:M · utility_type_id"
+  UTILITY_RATES ||--o{ RATE_TIERS : "1:M · utility_rate_id"
+  TENANCIES ||--o{ METER_READINGS : "1:M · tenancy_id"
+  UTILITY_TYPES ||--o{ METER_READINGS : "1:M · utility_type_id"
+  USERS ||--o{ METER_READINGS : "1:M · recorded_by"
+  TENANCIES ||--o{ BILLS : "1:M · tenancy_id"
+  BILLS ||--o{ BILL_ITEMS : "1:M · bill_id"
+  BILLS ||--o{ PAYMENTS : "1:M · bill_id"
+  USERS ||--o{ PAYMENTS : "1:M · received_by"
 
-  TENANCIES ||--o{ MAINTENANCE_TICKETS : "tenancy_id"
-  USERS |o--o{ MAINTENANCE_TICKETS : "created_by"
-  MAINTENANCE_TICKETS ||--o{ TICKET_STATUS_HISTORY : "ticket_id"
-  USERS |o--o{ TICKET_STATUS_HISTORY : "changed_by"
-  USERS ||--o{ NOTIFICATIONS : "user_id"
-  USERS |o--o{ AUDIT_LOGS : "actor_user_id"
-  TENANTS ||--o{ ACCOUNT_INVITATIONS : "tenant_id"
-  USERS |o--o{ ACCOUNT_INVITATIONS : "created_by"
+  TENANCIES ||--o{ MAINTENANCE_TICKETS : "1:M · tenancy_id"
+  USERS |o--o{ MAINTENANCE_TICKETS : "0..1:M · created_by"
+  MAINTENANCE_TICKETS ||--o{ TICKET_STATUS_HISTORY : "1:M · ticket_id"
+  USERS |o--o{ TICKET_STATUS_HISTORY : "0..1:M · changed_by"
+  USERS ||--o{ NOTIFICATIONS : "1:M · user_id"
+  USERS |o--o{ AUDIT_LOGS : "0..1:M · actor_user_id"
+  TENANTS ||--o{ ACCOUNT_INVITATIONS : "1:M · tenant_id"
+  USERS |o--o{ ACCOUNT_INVITATIONS : "0..1:M · created_by"
 
   EMAIL_OUTBOX {
     bigint id PK
@@ -235,6 +235,19 @@ erDiagram
     varchar setting_key PK
   }
 ```
+
+**The two many-to-many relationships.** There is no direct M:N foreign key; each is resolved by a
+junction table, which is why it appears above as two `1:M` links.
+
+| M:N pair | Junction table | Links |
+| --- | --- | --- |
+| users ↔ houses | `staff_assignments` | `staff_assignments.user_id`, `staff_assignments.house_id`; unique on the pair |
+| rooms ↔ amenities | `room_amenity_map` | `room_amenity_map.room_id`, `room_amenity_map.amenity_id`; both are the primary key |
+
+**The near one-to-ones.** `tenants.user_id` and `reservation_requests.created_reservation_id` are
+nullable but written at most once by the application (invitation acceptance, request approval). The
+schema does not put a unique key on either column, so the diagram says `0..1` rather than claiming a
+`1:1` the database does not enforce.
 
 Three things explain most of the shape:
 
