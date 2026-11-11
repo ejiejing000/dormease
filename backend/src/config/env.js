@@ -31,7 +31,7 @@ module.exports = {
   holdMinutes: Number(process.env.HOLD_MINUTES || 30),
   lateFeeAmount: Number(process.env.LATE_FEE_AMOUNT || 100),
   ticketSlaHours: Number(process.env.TICKET_SLA_HOURS || 48),
-  invitationHours: Number(process.env.INVITATION_HOURS || 72),
+  invitationHours: Number(process.env.INVITATION_HOURS || 48),
   appUrl: process.env.PUBLIC_APP_URL || 'http://localhost:9000',
   email: {
     host: process.env.EMAIL_HOST || '',
