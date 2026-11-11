@@ -16,7 +16,7 @@ table to match commits to people.
 | 3 | Mark Andrian A. Bejar | markbejar1 | `feature/20-tenants-leases` | Tenants, leases, reservations, waitlist |
 | 4 |  | abigeyl19 | `feature/30-utilities-billing` | Rates, readings, billing, payments |
 | 5 | Jessa S. Boquecosa | LittleMiss10 | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
-| 6 | Aisha Janine L. Babor | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, settings |
+| 6 | Aisha Janine L. Babor | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding |
 
 ## The three access areas
 
@@ -293,4 +293,4 @@ visible. No member commits another member's files.
 | 3 | markbejar1 | `feature/20-tenants-leases` | Tenants, leases, reservations and waitlist | `tenants`, `tenancies`, `reservations`, `reservation_events`, `waitlist` | `schema/03_tenants_leases.sql`, `seed/20_tenants_leases.sql` | Tenants: list, get, create, update, delete (history-guarded) | `GET /api/tenancies/register` — INNER JOIN tenancies → tenants → rooms → houses | `tenants.html`, `lease.html`, `reservations.html` |
 | 4 | abigeyl19 | `feature/30-utilities-billing` | Utility rates, meter readings, bills and payments | `utility_types`, `utility_rates`, `rate_tiers`, `meter_readings`, `bills`, `bill_items`, `payments` | `schema/04_billing.sql`, `seed/30_billing.sql` | Bills: list, get, generate/create, patch, void/delete | `GET /api/bills/ledger` — FULL OUTER JOIN bills ↔ payments (LEFT JOIN + RIGHT JOIN branch) | `rates.html`, `readings.html`, `bills.html`, `payments.html` |
 | 5 | LittleMiss10 | `feature/40-maintenance-comms` | Maintenance tickets and notifications | `maintenance_tickets`, `ticket_status_history`, `notifications`, `email_outbox` | `schema/05_maintenance.sql`, `seed/40_maintenance.sql` | Tickets: list, get, create, update, status, delete | `GET /api/tickets/history-report` — LEFT JOIN tickets → status history | `tickets.html`, `notifications.html` |
-| 6 | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, system settings | `reservation_requests`, `account_invitations` | `schema/06_onboarding.sql`, `seed/50_onboarding.sql` | Invitations: list, issue/create, revoke/update, delete + public accept | `GET /api/invitations/coverage` — LEFT JOIN tenants → invitations → users | `reservation-requests.html`, `invitations.html`, `set-password.html`, `request-status.html` |
+| 6 | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding | `reservation_requests`, `account_invitations` | `schema/06_onboarding.sql`, `seed/50_onboarding.sql` | Invitations: list, issue/create, revoke/update, delete + public accept | `GET /api/invitations/coverage` — LEFT JOIN tenants → invitations → users | `reservation-requests.html`, `invitations.html`, `set-password.html`, `request-status.html` |
