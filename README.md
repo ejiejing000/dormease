@@ -14,9 +14,15 @@ table to match commits to people.
 | 1 | Ejie Mar Q. Bongcawel | ejiejing000 | `feature/00-core-auth` | Core platform, security, staff admin, public room discovery |
 | 2 | Jiraiyah Ethan S. Beligolo | Furinaa1013 | `feature/10-properties` | Houses, rooms and amenities |
 | 3 | Mark Andrian A. Bejar | markbejar1 | `feature/20-tenants-leases` | Tenants, leases, reservations, waitlist |
+<<<<<<< Updated upstream
 | 4 |  | abigeyl19 | `feature/30-utilities-billing` | Rates, readings, billing, payments |
 | 5 | Jessa S. Boquecosa | LittleMiss10 | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
 | 6 | Aisha Janine L. Babor | Aiijan009 | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding |
+=======
+| 4 | Kim Abigail C. Bayot  | abigeyl19 | `feature/30-utilities-billing` | Rates, readings, billing, payments |
+| 5 |  |  | `feature/40-maintenance-comms` | Maintenance tickets and notifications |
+| 6 |  |  | `feature/50-onboarding-reports` | Reservation requests, invitation onboarding, settings |
+>>>>>>> Stashed changes
 
 ## The three access areas
 
